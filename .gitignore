@@ -1,9 +1,8 @@
 # Ignore storage
 data
-saved_models
 
 # Ignore python generated files
-*/__pycache__
+**/__pycache__
 
 # Ignore testing files
-dev_test.ipynb
+**/test*
