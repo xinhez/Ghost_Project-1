@@ -3,6 +3,28 @@ import numpy as np
 from utils import count_unique
 
 
+class RawData():
+    def __init__(self, modalities, labels, batches):
+        self.modalities = modalities
+        self.labels = labels,
+        self.batches = batches
+
+
+    @property
+    def input_sizes(self):
+        return [modality.shape[1] for modality in self.modalities]
+
+    
+    @property
+    def output_size(self):
+        return count_unique(self.labels)
+
+    
+    @property
+    def n_batch(self):
+        return count_unique(self.batches)
+
+
 # ==================== AnnData Format ====================
 def get_batch(adata, obs_key_batch, default_batch):
     """\
@@ -16,17 +38,23 @@ def get_batch(adata, obs_key_batch, default_batch):
 
 def format_data(
     adatas, 
-    reference_index_label, reference_index_batch, 
-    obs_key_label, obs_key_batch
+    reference_index_label, obs_key_label, 
+    reference_index_batch, obs_key_batch,
+    default_batch='train'
 ):
     """\
-    Format the AnnDatas into modalities, labels and batches.
+    Format the AnnDatas into RawData object containing modalities, labels and batches.
     """
-    modalities = [adata.X for adata in adatas]
-    labels = adatas[reference_index_label].obs[obs_key_label]
-    batches = get_batch(adatas[reference_index_batch], obs_key_batch, 0)
+    validate_anndatas(adatas, obs_key_label, reference_index_label)
 
-    return modalities, labels, batches
+    modalities = [adata.X for adata in adatas]
+    if reference_index_label is None:
+        labels = []
+    else:
+        labels = adatas[reference_index_label].obs[obs_key_label]
+    batches = get_batch(adatas[reference_index_batch], obs_key_batch, default_batch)
+
+    return RawData(modalities, labels, batches)
 
 
 # ==================== AnnData Validation ====================
@@ -59,43 +87,9 @@ def validate_anndatas(adatas, obs_key_label, reference_index_label):
 
 
 # ==================== Size Extraction ====================
-def get_input_sizes(modalities):
+def validate_data_sizes_match(data, data_eval):
     """\
-    Compute the input sizes for model configurations based on the given modalities.
+    Validate that the training dataset and the evaluation dataset have the same input sizes.
     """
-    return [modality.shape[1] for modality in modalities]
-
-
-def get_output_size(labels):
-    """\
-    Compute the output size for model configuration based on the given labels.
-    """
-    return count_unique(labels)
-
-
-def get_batch_count(batches):
-    """\
-    Count the number of unique batches for the given batches.
-    """
-    return count_unique(batches)
-
-
-def get_model_config_sizes(
-    adatas, 
-    reference_index_label, reference_index_batch, 
-    obs_key_label, obs_key_batch
-):
-    """
-    Compute the sizes for model configuration based on the given dataset.
-    """
-    modalities, labels, batches = format_data(
-        adatas, 
-        reference_index_label, reference_index_batch, 
-        obs_key_label, obs_key_batch
-    )
-
-    input_sizes = get_input_sizes(modalities)
-    output_size = get_output_size(labels)
-    n_batch     = get_batch_count(batches)
-    
-    return input_sizes, output_size, n_batch
+    if data.input_sizes != data_eval.input_sizes:
+        raise Exception("All feature dimensions in the evaluation dataset must match with the registered data.")

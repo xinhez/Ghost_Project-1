@@ -1,7 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Literal, NewType, Union
 
-from data import get_model_config_sizes
 from utils import convert_to_lowercase
 
 
@@ -56,12 +55,11 @@ class Model(Config):
     input_sizes: List[int]
     output_size: int
     n_batch:     int
-    n_head:      int = 2
     # ===== architecture =====
     encoders:       List[MLP]
     decoders:       List[MLP]
     discriminators: List[MLP]
-    fuser_method:   Literal['mean', 'weighted_mean', 'weighted_mean_feature', 'attention'] = 'mean'
+    fusion_method:  Literal['mean'] = 'mean'
     cluster:        MLP
 
 
@@ -105,25 +103,17 @@ def create_model_config(
     )
 
 
-def create_model_config_from_data(
-    adatas, 
-    reference_index_label, reference_index_batch, 
-    obs_key_label, obs_key_batch
-):
+def create_model_config_from_data(data):
     """\
     Create a Model config with the sizes inferred from the given dataset.
     """
-    input_sizes, output_size, n_batch = get_model_config_sizes(
-        adatas, 
-        reference_index_label, reference_index_batch, 
-        obs_key_label, obs_key_batch
-    )
-    return create_model_config(input_sizes, output_size, n_batch)
+    return create_model_config(data.input_sizes, data.output_size, data.n_batch)
 
 
 def autocomplete_mlp_config_attribute(config, attribute):
     """\
-        Complete singleton attribute to a list if its type allows. Convert all upper cases to lower cases during the process.
+        Complete singleton attribute to a list if its type allows. 
+        Convert all upper cases to lower cases during the process.
     """
     config_to_complete = getattr(config, attribute)
     if isinstance(config_to_complete, list):
@@ -148,7 +138,7 @@ def validate_config_layer_count(config, attribute):
     """
     config_to_check = getattr(config, attribute)
     if isinstance(config_to_check, list) and len(config_to_check) != config.n_layers:
-        raise Exception(f"{config.config_name} atrribute: {attribute} does not match the {config.n_layers} layer count.")
+        raise Exception(f"{attribute} in {config.config_name} does not match the {config.n_layers} layer count.")
 
 
 def validate_mlp_config(config):
