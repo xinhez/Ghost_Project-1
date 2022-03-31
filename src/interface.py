@@ -2,22 +2,21 @@ import anndata
 
 from typing import List
 
-from constants import BATCH, LABEL, EVALUATION, INFERENCE, MODALITIES, MODEL
-from dataset import format_data, validate_data_sizes_match
-from model import create_model_from_data, load_model_from_path
-from scheduler import evaluate, infer, train
+from managers.data import Data, DataManager
+from model import create_model_from_data, load_model_from_path, Model
 
 
 class UnitedNet():
     """\
     API Interface
     """
+
     def register_anndatas(self, 
         adatas: List[anndata.AnnData], 
-        reference_index_batch: int=0,
-        obs_key_batch: str=BATCH,
-        reference_index_label: int=0,
-        obs_key_label: str=LABEL, 
+        label_index: int,
+        label_key: str, 
+        batch_index: int=None,
+        batch_key: str=None,
     ) -> None:
         """\
         Save or override existing training dataset. 
@@ -34,12 +33,90 @@ class UnitedNet():
         obs_key_label
             key to look up label information from the reference adata.
         """
-        self.data = format_data(
-            adatas, 
-            reference_index_label, obs_key_label, 
-            reference_index_batch, obs_key_batch,
+        self.data = DataManager.format_anndatas(
+            DataManager.train, adatas, batch_index, batch_key, label_index, label_key
         )
         self.model = create_model_from_data(self.data)
+
+
+    def fit(self, 
+        task: str,
+        adatas_eval: List[anndata.AnnData] = None, 
+        label_index_eval: int=None, 
+        label_key_eval: str=None,
+        batch_index_eval: int=None, 
+        batch_key_eval: str=None,
+    ):
+        """\
+        Fitting the current model on the saved training dataset.
+        
+        adatas_eval
+            Used as evaluating dataset if provided. 
+            Otherwise use the training dataset for evaluation.
+        """
+        self._check_data_exist()
+             
+        data_eval = self._format_data_or_retrieve_registered(
+            DataManager.evaluate, adatas_eval, batch_index_eval, batch_key_eval, label_index_eval, label_key_eval
+        )
+
+        raise Exception("Not Implemented!")
+        
+
+    def evaluate(self, 
+        adatas_eval: List[anndata.AnnData] = None, 
+        label_index_eval: int=None, 
+        label_key_eval: str=None,
+        batch_index_eval: int=None, 
+        batch_key_eval: str=None,
+    ):
+        """\
+        Evaluate the current model with the adatas_eval dataset, or the registered data if the former not provided.
+
+        adatas_eval
+            The setting of adata_eval must match the saved adata.
+        """
+        self._check_model_exist()
+        self._check_data_exist()
+
+        data_eval = DataManager.format_anndatas(
+            DataManager.evaluate, adatas_eval, batch_index_eval, batch_key_eval, label_index_eval, label_key_eval
+        )
+
+        raise Exception("Not Implemented!")
+
+
+    def infer(self):
+        """\
+        Produce inference result for the adatas_infer dataset, or the registered data if the former not provided. 
+        """
+        self._check_model_exist()
+        self._check_data_exist()
+
+        raise Exception("Not Implemented!")
+
+
+    def transfer(self,
+        adatas_eval: List[anndata.AnnData] = None, 
+        label_index_eval: int=None, 
+        label_key_eval: str=None,
+        batch_index_eval: int=None, 
+        batch_key_eval: str=None,
+    ):
+        """\
+        Perform ransfer learning on the adatas_transfer dataset. 
+
+        adatas_transfer
+            The setting of adata_infer must match the saved adata.
+        """
+        self._check_model_exist()
+        self._check_data_exist()
+             
+        data_eval = self._format_data_or_retrieve_registered(
+            DataManager.evaluate, adatas_eval, batch_index_eval, batch_key_eval, label_index_eval, label_key_eval
+        )
+
+        raise Exception("Not Implemented!")
 
     
     def load_model(self, path: str) -> None:
@@ -61,91 +138,36 @@ class UnitedNet():
         self.model.save_model(path)
 
 
-    def fit(self, 
-        task: str,
-        adatas_eval: List[anndata.AnnData] = None, 
-        reference_index_batch: int=0, 
-        obs_key_batch: str=BATCH,
-        reference_index_label: int=0, 
-        obs_key_label: str=LABEL, 
-    ):
-        """\
-        Fitting the current model on the saved training dataset.
+    def _get_data(self):
+        return getattr(self, Data.name)
+
+    def _set_data(self, data):
+        setattr(self, Data.name, data)
+
+    data = property(_get_data, _set_data)
         
-        adatas_eval
-            Used as evaluating dataset if provided. 
-            Otherwise use the training dataset for evaluation.
-        """
-        data_eval = self._check_and_process_evaluation_data(
-            adatas_eval, 
-            reference_index_batch, obs_key_batch,
-            reference_index_label, obs_key_label, 
-        )
-        train(self.model, task, self.data, data_eval)
 
-
-    def evaluate(self, 
-        adatas_eval: List[anndata.AnnData] = None, 
-        reference_index_batch: int=0, 
-        obs_key_batch: str=BATCH,
-        reference_index_label: int=0, 
-        obs_key_label: str=LABEL, 
-    ):
-        """\
-        Evaluate the current model on the provided dataset.
-
-        adata_eval
-            The setting of adata_eval must match the saved adata.
-        """
-        self._check_model_exist()
-        data_eval = self._check_and_process_evaluation_data(
-            adatas_eval, 
-            reference_index_batch, obs_key_batch,
-            reference_index_label, obs_key_label, 
-        )
-        evaluate(self.model, data_eval)
-
-
-    def infer(self, 
-        adatas_eval: List[anndata.AnnData] = None, 
-        reference_index_batch: int=0,
-        obs_key_batch: str=BATCH,
-    ):
-        """\
-        Infer the current model on the provided dataset. 
-
-        adata_infer
-            The setting of adata_infer must match the saved adata.
-        """
-        self._check_model_exist()
-        data_eval = self._check_and_process_evaluation_data(
-            adatas_eval, reference_index_batch, obs_key_batch,
-        )
-        infer(self.model, data_eval)
-
+    def _get_model(self):
+        return getattr(self, Model.name)
     
-    def _check_and_process_evaluation_data(self, 
-        adatas_eval, 
-        reference_index_batch, obs_key_batch,
-        reference_index_label=None, obs_key_label=None, 
-    ):
-        if not hasattr(self, MODALITIES):
-            raise Exception("Please first register your training dataset with the register_anndatas method.")
+    def _set_model(self, model):
+        setattr(self, Model.name, model)
 
-        if adatas_eval is not None:
-            data_eval = format_data(
-                adatas_eval, 
-                reference_index_batch, obs_key_batch,
-                reference_index_label, obs_key_label,
-                default_batch = INFERENCE if reference_index_label is None else EVALUATION,
-            )
-            validate_data_sizes_match(self.data, data_eval)
-        else: 
-            data_eval = self.data
+    model = property(_get_model, _set_model)
 
-        return data_eval
+
+    def _format_data_or_retrieve_registered(self, group, adatas, batch_index, batch_key, label_index, label_key):
+        if adatas is None:
+            return self.data
+        else:
+            return DataManager.format_anndatas(group, adatas, batch_index, batch_key, label_index, label_key)
 
     
     def _check_model_exist(self):
-        if not hasattr(self, MODEL):
+        if self.model is None:
             raise Exception("Please first train the model with the fit method or load model weights with load_model.")
+
+
+    def _check_data_exist(self):
+        if self.data is None:
+            raise Exception("Please first register your training dataset with the register_anndatas method.")

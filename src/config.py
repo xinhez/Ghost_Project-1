@@ -1,10 +1,9 @@
 from pydantic import BaseModel
 from typing import List, Literal, NewType, Union
 
-from constants import FUSION_METHODS, MEAN
-from constants import ACTIVATION_METHODS, RELU
 from constants import mlp_attribute_of_variable_length
-from utils import convert_to_lowercase
+from managers.activation import ReLUActivation
+from managers.fuser import MeanFuser
 
 
 # ==================== New Type Generators ====================
@@ -43,7 +42,7 @@ class MLP(Config):
     dropouts:           type_or_typelist(float)             = 0
     use_biases:         type_or_typelist(bool)              = False
     use_batch_norms:    type_or_typelist(bool)              = True
-    activation_methods: type_or_typelist(none_or_type(str)) = RELU
+    activation_methods: type_or_typelist(none_or_type(str)) = ReLUActivation.name
     # ===== static =====
     attribute_of_variable_length = [*mlp_attribute_of_variable_length]
 
@@ -62,8 +61,14 @@ class Model(Config):
     encoders:       List[MLP]
     decoders:       List[MLP]
     discriminators: List[MLP]
-    fusion_method:  str = MEAN
-    cluster:        MLP
+    fusion_methods: List[str]
+    clusters:       List[MLP]
+
+    @property
+    def n_heads(self):
+        if len(self.fusion_method) != len(self.cluster):
+            raise Exception("Model must have the same number of fusion methods and clusters.")
+        return len(self.fusion_method)
 
 
 def create_MLP_config(input_size, output_size, hidden_sizes):
@@ -81,7 +86,8 @@ def create_MLP_config(input_size, output_size, hidden_sizes):
 def create_model_config(
     input_sizes, output_size, n_batch, 
     latent_size=16, discriminator_output_size=32,
-    autoencoder_hidden_sizes=[16, 16], cluster_hidden_sizes=[100], discriminator_hidden_sizes=[64]
+    autoencoder_hidden_sizes=[16, 16], discriminator_hidden_sizes=[64],
+    n_head = 3, fusion_method = MeanFuser.name, cluster_hidden_sizes=[100]
 ):
     """\
     create_model_config
@@ -98,11 +104,12 @@ def create_model_config(
             create_MLP_config(latent_size, input_size, list(reversed(autoencoder_hidden_sizes)))
             for input_size in input_sizes
         ],
-        cluster = create_MLP_config(latent_size, output_size, cluster_hidden_sizes),
         discriminators = [
             create_MLP_config(input_size, discriminator_output_size, discriminator_hidden_sizes)
             for input_size in input_sizes
-        ]
+        ],
+        fusion_methods = [fusion_method for _ in range(n_head)],
+        clusters = [create_MLP_config(latent_size, output_size, cluster_hidden_sizes) for _ in range(n_head)],
     )
 
 
@@ -110,61 +117,4 @@ def create_model_config_from_data(data):
     """\
     Create a Model config with the sizes inferred from the given dataset.
     """
-    return create_model_config(data.input_sizes, data.output_size, data.n_batch)
-
-
-def autocomplete_mlp_config_attribute(config, attribute):
-    """\
-        Complete singleton attribute to a list if its type allows. 
-        Convert all upper cases to lower cases during the process.
-    """
-    config_to_complete = getattr(config, attribute)
-    if isinstance(config_to_complete, list):
-        setattr(config, attribute, [convert_to_lowercase(c) for c in config_to_complete])
-    else:
-        config_to_complete = convert_to_lowercase(config_to_complete)
-        setattr(config, attribute, [config_to_complete] * config.n_layers)
-
-
-def autocomplete_mlp_config(config):
-    """\
-        Complete singleton config to a list if its type allows.
-    """
-    validate_mlp_config(config)
-
-    for attribute in config.attribute_of_variable_length:
-        autocomplete_mlp_config_attribute(config, attribute)
-
-
-# ==================== Config Validation ====================
-def validate_mlp_config(config):
-    """\
-    Validate MLP config
-    """
-    for attribute in config.attribute_of_variable_length:
-        validate_config_layer_count(config, attribute)
-
-
-def validate_config_layer_count(config, attribute):
-    """\
-    Check that the layers noted in the given configuration matches the given layer count.
-    """
-    config_to_check = getattr(config, attribute)
-    if isinstance(config_to_check, list) and len(config_to_check) != config.n_layers:
-        raise Exception(f"{attribute} in {config.config_name} does not match the {config.n_layers} layer count.")
-
-
-def validate_fusion_method(fusion_method):
-    """\
-    Validate that the requested fusion method is supported.
-    """
-    if fusion_method not in FUSION_METHODS:
-        raise Exception(f"Only {FUSION_METHODS} fusion methods are supported.")
-
-
-def validate_activation_method(activation_method):
-    """\
-    Validate that the requested activation method is supported.
-    """
-    if activation_method not in ACTIVATION_METHODS:
-        raise Exception(f"Only {ACTIVATION_METHODS} activation methods are supported.")
+    return create_model_config(data.input_sizes, data.output_size, data.n_batches)
