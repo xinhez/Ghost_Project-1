@@ -1,10 +1,13 @@
 from pydantic import BaseModel
 from typing import List, Literal, NewType, Union
 
+from constants import FUSION_METHODS, MEAN
+from constants import ACTIVATION_METHODS, RELU
+from constants import mlp_attribute_of_variable_length
 from utils import convert_to_lowercase
 
 
-# ==================== New Type Generators
+# ==================== New Type Generators ====================
 def none_or_type(t):
     """\
     Return new type defined as union of None or the given type
@@ -37,12 +40,12 @@ class MLP(Config):
     output_size:  int
     hidden_sizes: List[int]
     # ===== parameters =====
-    biases:         type_or_typelist(bool)              = False
-    dropouts:       type_or_typelist(float)             = 0
-    batch_norms:    type_or_typelist(bool)              = True
-    activations:    type_or_typelist(none_or_type(str)) = 'ReLU'
+    dropouts:           type_or_typelist(float)             = 0
+    use_biases:         type_or_typelist(bool)              = False
+    use_batch_norms:    type_or_typelist(bool)              = True
+    activation_methods: type_or_typelist(none_or_type(str)) = RELU
     # ===== static =====
-    attribute_of_variable_length = ['biases', 'dropouts', 'activations', 'batch_norms']
+    attribute_of_variable_length = [*mlp_attribute_of_variable_length]
 
 
     @property
@@ -59,7 +62,7 @@ class Model(Config):
     encoders:       List[MLP]
     decoders:       List[MLP]
     discriminators: List[MLP]
-    fusion_method:  Literal['mean'] = 'mean'
+    fusion_method:  str = MEAN
     cluster:        MLP
 
 
@@ -127,11 +130,21 @@ def autocomplete_mlp_config(config):
     """\
         Complete singleton config to a list if its type allows.
     """
+    validate_mlp_config(config)
+
     for attribute in config.attribute_of_variable_length:
         autocomplete_mlp_config_attribute(config, attribute)
 
 
 # ==================== Config Validation ====================
+def validate_mlp_config(config):
+    """\
+    Validate MLP config
+    """
+    for attribute in config.attribute_of_variable_length:
+        validate_config_layer_count(config, attribute)
+
+
 def validate_config_layer_count(config, attribute):
     """\
     Check that the layers noted in the given configuration matches the given layer count.
@@ -141,9 +154,17 @@ def validate_config_layer_count(config, attribute):
         raise Exception(f"{attribute} in {config.config_name} does not match the {config.n_layers} layer count.")
 
 
-def validate_mlp_config(config):
+def validate_fusion_method(fusion_method):
     """\
-    Validate MLP config
+    Validate that the requested fusion method is supported.
     """
-    for attribute in config.attribute_of_variable_length:
-        validate_config_layer_count(config, attribute)
+    if fusion_method not in FUSION_METHODS:
+        raise Exception(f"Only {FUSION_METHODS} fusion methods are supported.")
+
+
+def validate_activation_method(activation_method):
+    """\
+    Validate that the requested activation method is supported.
+    """
+    if activation_method not in ACTIVATION_METHODS:
+        raise Exception(f"Only {ACTIVATION_METHODS} activation methods are supported.")

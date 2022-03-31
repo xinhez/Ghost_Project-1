@@ -4,7 +4,9 @@ from torch.nn import BatchNorm1d, Dropout, Linear
 from torch.nn import ReLU, Sigmoid, Softmax, Tanh
 from torch.nn import Module, ModuleList
 
-from config import autocomplete_mlp_config, create_model_config_from_data, validate_mlp_config
+from config import autocomplete_mlp_config, create_model_config_from_data
+from config import validate_activation_method, validate_fusion_method
+from constants import MEAN, RELU, SIGMOID, SOFTMAX, TANH
 from utils import convert_to_lowercase
 
 
@@ -21,24 +23,25 @@ def get_fuser(method):
     Get the fuser corresponding to the given fusion method.
     """
     method = convert_to_lowercase(method)
+    validate_fusion_method(method)
     supported_fusion_methods = {
-        'mean': MeanFuser
+        MEAN: MeanFuser
     }
     return supported_fusion_methods[method]()
 
 
-def get_activation(activation_type):
+def get_activation(activation_method):
     """\
     Return the corresponding activation layer or raise exception if it is not supported.
     """
+    validate_activation_method(activation_method)
     supported_activations = {
-        'relu': ReLU(),
-        'sigmoid': Sigmoid(),
-        'tanh': Tanh(),
-        'softmax': Softmax(dim=1)
+        RELU: ReLU(),
+        SIGMOID: Sigmoid(),
+        SOFTMAX: Softmax(dim=1),
+        TANH: Tanh(),
     }
-    if activation_type.lower() in supported_activations.keys():
-        return supported_activations[activation_type]
+    return supported_activations[activation_method]
 
 
 # ==================== Model Definition ====================
@@ -49,7 +52,6 @@ class MLP(Module):
     def __init__(self, config):
         super().__init__()
         autocomplete_mlp_config(config)
-        validate_mlp_config(config)
 
         input_sizes = [config.input_size] + config.hidden_sizes
         output_sizes = config.hidden_sizes + [config.output_size]
@@ -57,16 +59,16 @@ class MLP(Module):
         self.layers = ModuleList()
 
         for i in range(config.n_layers):
-            self.layers.append(Linear(in_features=input_sizes[i], out_features=output_sizes[i], bias=config.biases[i]))
+            self.layers.append(Linear(in_features=input_sizes[i], out_features=output_sizes[i], bias=config.use_biases[i]))
 
             if config.dropouts[i] > 0:
                 self.layers.append(Dropout(p=config.dropouts[i]))
 
-            if config.batch_norms[i]:
+            if config.use_batch_norms[i]:
                 self.layers.append(BatchNorm1d(output_sizes[i]))
             
-            if config.activations[i] is not None:
-                self.layers.append(get_activation(config.activations[i]))
+            if config.activation_methods[i] is not None:
+                self.layers.append(get_activation(config.activation_methods[i]))
 
     
     def forward(self, x):

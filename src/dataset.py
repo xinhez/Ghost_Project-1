@@ -1,5 +1,6 @@
 import numpy as np
 
+from constants import TRAIN
 from utils import count_unique
 
 
@@ -40,7 +41,7 @@ def format_data(
     adatas, 
     reference_index_label, obs_key_label, 
     reference_index_batch, obs_key_batch,
-    default_batch='train'
+    default_batch=TRAIN
 ):
     """\
     Format the AnnDatas into RawData object containing modalities, labels and batches.
@@ -67,6 +68,15 @@ def validate_anndatas_counts(adatas):
         raise Exception("Please provide equal numbers of samples for all modalities.")
 
 
+def validate_anndatas_dimensions(adatas):
+    """\
+    Validate the given AnnDatas are all 2D (number of samples X number of features).
+    """
+    for i, adata in enumerate(adatas):
+        if len(adata.shape) != 2:
+            raise Exception(f"The {i+1}-th modality in the given dataset is not 2D.")
+
+
 def validate_anndatas_labels(reference, obs_key_label):
     """\
     validate_anndatas_labels
@@ -83,6 +93,7 @@ def validate_anndatas(adatas, obs_key_label, reference_index_label):
         raise Exception("Please provide at least 2 modalities.")
 
     validate_anndatas_counts(adatas)
+    validate_anndatas_dimensions(adatas)
     validate_anndatas_labels(adatas[reference_index_label], obs_key_label)
 
 

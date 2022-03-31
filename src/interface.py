@@ -2,9 +2,10 @@ import anndata
 
 from typing import List
 
+from constants import BATCH, LABEL, EVALUATION, INFERENCE, MODALITIES, MODEL
 from dataset import format_data, validate_data_sizes_match
 from model import create_model_from_data, load_model_from_path
-from scheduler import train
+from scheduler import evaluate, infer, train
 
 
 class UnitedNet():
@@ -14,9 +15,9 @@ class UnitedNet():
     def register_anndatas(self, 
         adatas: List[anndata.AnnData], 
         reference_index_batch: int=0,
-        obs_key_batch: str='batch',
+        obs_key_batch: str=BATCH,
         reference_index_label: int=0,
-        obs_key_label: str='label', 
+        obs_key_label: str=LABEL, 
     ) -> None:
         """\
         Save or override existing training dataset. 
@@ -60,12 +61,13 @@ class UnitedNet():
         self.model.save_model(path)
 
 
-    def fit(self, mode,
+    def fit(self, 
+        task: str,
         adatas_eval: List[anndata.AnnData] = None, 
         reference_index_batch: int=0, 
-        obs_key_batch: str='batch',
+        obs_key_batch: str=BATCH,
         reference_index_label: int=0, 
-        obs_key_label: str='label', 
+        obs_key_label: str=LABEL, 
     ):
         """\
         Fitting the current model on the saved training dataset.
@@ -79,15 +81,15 @@ class UnitedNet():
             reference_index_batch, obs_key_batch,
             reference_index_label, obs_key_label, 
         )
-        train(self.model, mode, self.data, data_eval)
+        train(self.model, task, self.data, data_eval)
 
 
     def evaluate(self, 
         adatas_eval: List[anndata.AnnData] = None, 
         reference_index_batch: int=0, 
-        obs_key_batch: str='batch',
+        obs_key_batch: str=BATCH,
         reference_index_label: int=0, 
-        obs_key_label: str='label', 
+        obs_key_label: str=LABEL, 
     ):
         """\
         Evaluate the current model on the provided dataset.
@@ -101,13 +103,13 @@ class UnitedNet():
             reference_index_batch, obs_key_batch,
             reference_index_label, obs_key_label, 
         )
-        pass
+        evaluate(self.model, data_eval)
 
 
     def infer(self, 
         adatas_eval: List[anndata.AnnData] = None, 
         reference_index_batch: int=0,
-        obs_key_batch: str='batch',
+        obs_key_batch: str=BATCH,
     ):
         """\
         Infer the current model on the provided dataset. 
@@ -119,7 +121,7 @@ class UnitedNet():
         data_eval = self._check_and_process_evaluation_data(
             adatas_eval, reference_index_batch, obs_key_batch,
         )
-        pass
+        infer(self.model, data_eval)
 
     
     def _check_and_process_evaluation_data(self, 
@@ -127,7 +129,7 @@ class UnitedNet():
         reference_index_batch, obs_key_batch,
         reference_index_label=None, obs_key_label=None, 
     ):
-        if not hasattr(self, 'modalities'):
+        if not hasattr(self, MODALITIES):
             raise Exception("Please first register your training dataset with the register_anndatas method.")
 
         if adatas_eval is not None:
@@ -135,7 +137,7 @@ class UnitedNet():
                 adatas_eval, 
                 reference_index_batch, obs_key_batch,
                 reference_index_label, obs_key_label,
-                default_batch = 'inference' if reference_index_label is None else 'evaluation',
+                default_batch = INFERENCE if reference_index_label is None else EVALUATION,
             )
             validate_data_sizes_match(self.data, data_eval)
         else: 
@@ -145,5 +147,5 @@ class UnitedNet():
 
     
     def _check_model_exist(self):
-        if not hasattr(self, 'model'):
+        if not hasattr(self, MODEL):
             raise Exception("Please first train the model with the fit method or load model weights with load_model.")
