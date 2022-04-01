@@ -1,5 +1,5 @@
 from copyreg import constructor
-from utils import AlternativelyNamedObject, ObjectManager
+from managers.base import AlternativelyNamedObject, ObjectManager
 
 
 class BaseSchedule(AlternativelyNamedObject):

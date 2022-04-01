@@ -1,9 +1,8 @@
-from copyreg import constructor
-from utils import AlternativelyNamedObject, ObjectManager
+from managers.base import AlternativelyNamedObject, ObjectManager
 
 
 class BaseTask(AlternativelyNamedObject):
-    pass
+    def __init__(self, _): pass
 
 
 class CrossModelPredictionTask(BaseTask):

@@ -1,7 +1,7 @@
 import torch
 from torch.nn import Module
 
-from utils import NamedObject, ObjectManager
+from managers.base import NamedObject, ObjectManager
 
 
 class MeanFuser(Module, NamedObject):

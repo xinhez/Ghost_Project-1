@@ -2,8 +2,9 @@ import anndata
 
 from typing import List
 
-from managers.data import Data, DataManager
+from managers.data import Data, DataManager, EvaluateData, InferData, TrainData, TransferData
 from model import create_model_from_data, load_model_from_path, Model
+from script import evaluate, infer, train, transfer
 
 
 class UnitedNet():
@@ -23,7 +24,7 @@ class UnitedNet():
         If overriding existing training dataset, the model will also be refreshed.
 
         adatas
-            list of at least 2 modalities as anndata.
+            list of at modalities as anndata.
         reference_index_batch
             index of the modality to look up batch information.
         obs_key_batch
@@ -34,7 +35,7 @@ class UnitedNet():
             key to look up label information from the reference adata.
         """
         self.data = DataManager.format_anndatas(
-            DataManager.train, adatas, batch_index, batch_key, label_index, label_key
+            TrainData.name, adatas, batch_index, batch_key, label_index, label_key
         )
         self.model = create_model_from_data(self.data)
 
@@ -57,10 +58,10 @@ class UnitedNet():
         self._check_data_exist()
              
         data_eval = self._format_data_or_retrieve_registered(
-            DataManager.evaluate, adatas_eval, batch_index_eval, batch_key_eval, label_index_eval, label_key_eval
+            EvaluateData.name, adatas_eval, batch_index_eval, batch_key_eval, label_index_eval, label_key_eval
         )
 
-        raise Exception("Not Implemented!")
+        train(task, self.model, self.data, data_eval)
         
 
     def evaluate(self, 
@@ -80,23 +81,39 @@ class UnitedNet():
         self._check_data_exist()
 
         data_eval = DataManager.format_anndatas(
-            DataManager.evaluate, adatas_eval, batch_index_eval, batch_key_eval, label_index_eval, label_key_eval
+            EvaluateData.name, adatas_eval, batch_index_eval, batch_key_eval, label_index_eval, label_key_eval
         )
 
-        raise Exception("Not Implemented!")
+        evaluate(self.model, data_eval)
 
 
-    def infer(self):
+    def infer(self,
+        adatas_infer: List[anndata.AnnData], 
+        modalities_provided: List,
+        batch_index_infer: int=None, 
+        batch_key_infer: str=None,
+    ):
         """\
         Produce inference result for the adatas_infer dataset, or the registered data if the former not provided. 
         """
         self._check_model_exist()
         self._check_data_exist()
 
-        raise Exception("Not Implemented!")
+        data_infer = DataManager.format_anndatas(
+            InferData.name, adatas_infer, batch_index_infer, batch_key_infer, 
+            modalities_provided=modalities_provided, input_sizes=self.data.input_sizes,
+        )
+
+        return infer(self.model, data_infer)
 
 
     def transfer(self,
+        task: str,
+        adatas_transfer: List[anndata.AnnData], 
+        label_index_transfer: int, 
+        label_key_transfer: str,
+        batch_index_transfer: int=None, 
+        batch_key_transfer: str=None,
         adatas_eval: List[anndata.AnnData] = None, 
         label_index_eval: int=None, 
         label_key_eval: str=None,
@@ -111,12 +128,17 @@ class UnitedNet():
         """
         self._check_model_exist()
         self._check_data_exist()
+
+        data_transfer = DataManager.format_anndatas(
+            TransferData.name, 
+            adatas_transfer, batch_index_transfer, batch_key_transfer, label_index_transfer, label_key_transfer
+        )
              
         data_eval = self._format_data_or_retrieve_registered(
-            DataManager.evaluate, adatas_eval, batch_index_eval, batch_key_eval, label_index_eval, label_key_eval
+            EvaluateData.name, adatas_eval, batch_index_eval, batch_key_eval, label_index_eval, label_key_eval
         )
 
-        raise Exception("Not Implemented!")
+        transfer(task, self.model, self.data, data_transfer, data_eval)
 
     
     def load_model(self, path: str) -> None:

@@ -1,6 +1,6 @@
 from torch.nn import Module, ReLU, Sigmoid, Softmax, Tanh
 
-from utils import NamedObject, ObjectManager
+from managers.base import NamedObject, ObjectManager
 
 
 class ReLUActivation(ReLU, NamedObject):

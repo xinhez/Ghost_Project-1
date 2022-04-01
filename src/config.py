@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Literal, NewType, Union
+from typing import List, NewType, Union
 
 from constants import mlp_attribute_of_variable_length
 from managers.activation import ReLUActivation

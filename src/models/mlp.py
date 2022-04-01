@@ -1,28 +1,11 @@
-from copyreg import constructor
-from unicodedata import name
-import torch
-
 from torch.nn import Module, ModuleList
 from torch.nn import BatchNorm1d, Dropout, Linear
-from src.utils import ObjectManager
 
 from managers.activation import ActivationManager
 from utils import convert_to_lowercase
 
 
-# ==================== Layer Generator ====================
-def create_module_list(constructor, configs):
-    """\
-    Create a list of modules using the given constructor of the given configs.
-    """
-    return ModuleList([constructor(config) for config in configs])
-
-
-# ==================== Backbone Definition ====================
 class MLP(Module):
-    """
-    MLP
-    """
     def __init__(self, config):
         super().__init__()
         autocomplete_mlp_config(config)

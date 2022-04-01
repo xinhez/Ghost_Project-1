@@ -1,14 +1,13 @@
 import torch
 
-from torch.nn import Module
+from torch.nn import Module, ModuleList
 
 from config import create_model_config_from_data
 from managers.fuser import FuserManager
-from modules import create_module_list
-from modules import MLP
+from models.labelEncoder import LabelEncoder
+from models.mlp import MLP
 
 
-# ==================== Model Definition ====================
 class Model(Module):
     """
     Model
@@ -16,6 +15,9 @@ class Model(Module):
     name = 'Model'
     def __init__(self, config):
         super().__init__()
+        self.data_label_encoder = LabelEncoder() 
+        self.data_batch_encoder = LabelEncoder()
+
         self.encoders       = create_module_list(MLP,          config.encoders)
         self.decoders       = create_module_list(MLP,          config.decoders)
         self.discriminators = create_module_list(MLP,          config.discriminators)
@@ -66,6 +68,13 @@ class Model(Module):
 
 
 # ==================== Model Generator ====================
+def create_module_list(constructor, configs):
+    """\
+    Create a list of modules using the given constructor of the given configs.
+    """
+    return ModuleList([constructor(config) for config in configs])
+
+
 def create_model_from_data(data):
     """\
     Create a new model based on the given dataset.
