@@ -2,6 +2,7 @@ import numpy as np
 import torch
 
 from torch.utils.data import Dataset as TorchDataset
+from torch.utils.data import DataLoader
 
 from managers.base import NamedObject, ObjectManager
 from utils import count_unique
@@ -75,9 +76,14 @@ class Data(NamedObject):
 
 
     def create_dataset(self, model):
-        batches = model.data_batch_encoder.transform(self.batches)
-        labels = None if self.labels is None else model.data_label_encoder.transform(self.labels)
+        batches = model.data_batch_encoder.fit_transform(self.batches)
+        labels = None if self.labels is None else model.data_label_encoder.fit_transform(self.labels)
         return Dataset(self.modalities, batches, labels)
+
+
+    def create_dataloader(self, model):
+        dataset = self.create_dataset(model)
+        return DataLoader(dataset, batch_size=model.cfg.batch_size, shuffle=True)
 
 
 class EvaluateData(Data):
@@ -141,6 +147,7 @@ class TransferData(Data):
 
 
 class DataManager(ObjectManager):
+    name = 'data purposes'
     constructors   = [EvaluateData, InferData, TrainData, TransferData]
 
 

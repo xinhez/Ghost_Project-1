@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List, NewType, Union
 
-from constants import mlp_attribute_of_variable_length
+from constants import mlp_config_attribute_of_variable_length
 from managers.activation import ReLUActivation
 from managers.fuser import MeanFuser
 
@@ -33,6 +33,7 @@ class Config(BaseModel):
         return self.__class__.__name__
 
 
+# ==================== MLP Config Definition ====================
 class MLP(Config):
     # ===== sizes =====
     input_size:   int
@@ -44,14 +45,26 @@ class MLP(Config):
     use_batch_norms:    type_or_typelist(bool)              = True
     activation_methods: type_or_typelist(none_or_type(str)) = ReLUActivation.name
     # ===== static =====
-    attribute_of_variable_length = [*mlp_attribute_of_variable_length]
+    attribute_of_variable_length = [*mlp_config_attribute_of_variable_length]
 
 
     @property
     def n_layers(self):
         return 1 + len(self.hidden_sizes)
 
+
+def create_MLP_config(input_size, output_size, hidden_sizes):
+    """\
+    create_MLP_config
+    """
+    return MLP(
+        input_size   = input_size,
+        output_size  = output_size,
+        hidden_sizes = hidden_sizes,
+    )
+
     
+# ==================== Model Config Definition ====================
 class Model(Config):
     # ===== sizes =====
     input_sizes: List[int]
@@ -71,18 +84,6 @@ class Model(Config):
         return len(self.fusion_method)
 
 
-def create_MLP_config(input_size, output_size, hidden_sizes):
-    """\
-    create_MLP_config
-    """
-    return MLP(
-        input_size   = input_size,
-        output_size  = output_size,
-        hidden_sizes = hidden_sizes,
-    )
-
-
-# ==================== Config Creation ====================
 def create_model_config(
     input_sizes, output_size, n_batch, 
     latent_size=16, discriminator_output_size=32,
@@ -118,3 +119,56 @@ def create_model_config_from_data(data):
     Create a Model config with the sizes inferred from the given dataset.
     """
     return create_model_config(data.input_sizes, data.output_size, data.n_batches)
+
+
+# ==================== Schedule Config Definition ====================
+class Schedule(Config):
+    loss_terms: List[str]
+    optimizers: List[str]
+
+
+CNS = Experiment(
+    n_runs=1,
+    model_config = UnitedNet(
+        loss_trans_config=Loss(
+            funcs=trans_loss,  #
+            weights=trans_loss_weight,
+            adaptive_contrastive_weight=False,
+            delta=1,
+            contrast_augment=False
+        ),
+        loss_config=Loss(
+            funcs='|'.join([trans_loss, clus_loss]),  #
+            weights=trans_loss_weight + clus_loss_weight,
+            adaptive_contrastive_weight=False,
+            delta=1,
+            contrast_augment=False
+        ),
+        loss_clus_config=Loss(
+            funcs=clus_loss,  #
+            weights=clus_loss_weight,
+            adaptive_contrastive_weight=False,
+            delta=1,
+            contrast_augment=False
+        ),
+        optimizer_config=Optimizer(learning_rate=0.0025),#3e-4
+        noise_level = 'None',
+        shuffle_level='None',
+        provide_batch_labels = True,
+        finetuning=False
+    ),
+    trans_best_loss_term = 'latent_mmd',
+    clus_best_loss_term ="latent_mmd",
+    batch_size=1000, #64
+    n_epochs=1, #tranlation higher
+    # best_loss_term="SCE",
+    experiment_name=pre_experiment_name,
+    pre_experiment_identifier=None,
+    eval_interval=1,
+    checkpoint_interval = 1,
+    patience=32,
+    augmentation_load=False,
+    iterations = 15,
+    technique_name = technique_name,
+    v_dim = v_dim
+)

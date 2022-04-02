@@ -16,3 +16,8 @@ class LabelEncoder():
 
     def transform(self, labels):
         return [self.unique_labels[label] for label in labels]
+
+
+    def fit_transform(self, labels):
+        self.fit(labels)
+        return self.transform(labels)

@@ -14,12 +14,27 @@ class ClusteringSchedule(BaseSchedule):
     name = 'clustering'
 
 
+class LatentBatchAlignmentSchedule(BaseSchedule):
+    name = 'latent_batch_alignment'
+
+
 class TranslationSchedule(BaseSchedule):
     name = 'translation'
+
+
+class TranslationBatchAlignmentSchedule(BaseSchedule):
+    name = 'translation_batch_alignment'
 
 
 class ScheduleManager(ObjectManager):
     """\
     Schedule
+
+    Each schedule determines which losses to compute and which optimizers should step.
+    It should also save the best performing model based on its reference loss term.
     """
-    constructors = [ClassificationSchedule, ClusteringSchedule, TranslationSchedule]
+    name = 'schedules'
+    constructors = [
+        ClassificationSchedule, ClusteringSchedule, LatentBatchAlignmentSchedule, TranslationBatchAlignmentSchedule, 
+        TranslationSchedule
+    ]

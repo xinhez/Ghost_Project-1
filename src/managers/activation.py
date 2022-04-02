@@ -23,6 +23,7 @@ class ActivationManager(Module, ObjectManager):
     """\
     Activation
     """
+    name = 'activations'
     constructors = [ReLUActivation, SigmoidActivation, SoftmaxActivation, TanhActivation]
 
 

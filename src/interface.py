@@ -4,7 +4,7 @@ from typing import List
 
 from managers.data import Data, DataManager, EvaluateData, InferData, TrainData, TransferData
 from model import create_model_from_data, load_model_from_path, Model
-from script import evaluate, infer, train, transfer
+from scripts import evaluate, infer, train, transfer
 
 
 class UnitedNet():

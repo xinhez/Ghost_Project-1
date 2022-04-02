@@ -22,6 +22,7 @@ class FuserManager(Module, ObjectManager):
     """\
     Fuser
     """
+    name = 'fusion methods'
     constructors = [MeanFuser]
     
     def __init__(self, method):

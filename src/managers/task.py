@@ -18,4 +18,5 @@ class UnsupervisedGroupIdentificationTask(BaseTask):
 
 
 class TaskManager(ObjectManager):
+    name = 'tasks'
     constructors = [CrossModelPredictionTask, SupervisedGroupIdentificationTask, UnsupervisedGroupIdentificationTask]
