@@ -3,15 +3,14 @@ import anndata
 from typing import List
 
 from managers.data import Data, DataManager, EvaluateData, InferData, TrainData, TransferData
+from managers.task import TaskManager
 from model import create_model_from_data, load_model_from_path, Model
-from scripts import evaluate, infer, train, transfer
 
 
 class UnitedNet():
     """\
     API Interface
     """
-
     def register_anndatas(self, 
         adatas: List[anndata.AnnData], 
         label_index: int,
@@ -61,7 +60,9 @@ class UnitedNet():
             EvaluateData.name, adatas_eval, batch_index_eval, batch_key_eval, label_index_eval, label_key_eval
         )
 
-        train(task, self.model, self.data, data_eval)
+        task_manager = TaskManager.get_constructor_by_name(task)(TaskManager.function_train)
+        task_manager.train(self.model, self.data)
+        task_manager.evaluate(self.model, data_eval)
         
 
     def evaluate(self, 
@@ -84,7 +85,8 @@ class UnitedNet():
             EvaluateData.name, adatas_eval, batch_index_eval, batch_key_eval, label_index_eval, label_key_eval
         )
 
-        evaluate(self.model, data_eval)
+        task_manager = TaskManager.get_constructor_by_name()()
+        task_manager.evaluate(self.model, data_eval)
 
 
     def infer(self,
@@ -104,7 +106,8 @@ class UnitedNet():
             modalities_provided=modalities_provided, input_sizes=self.data.input_sizes,
         )
 
-        return infer(self.model, data_infer)
+        task_manager = TaskManager.get_constructor_by_name()()
+        task_manager.infer(self.model, data_infer)
 
 
     def transfer(self,
@@ -138,7 +141,9 @@ class UnitedNet():
             EvaluateData.name, adatas_eval, batch_index_eval, batch_key_eval, label_index_eval, label_key_eval
         )
 
-        transfer(task, self.model, self.data, data_transfer, data_eval)
+        task_manager = TaskManager.get_constructor_by_name(task)(TaskManager.function_train)
+        task_manager.transfer(self.model, self.data, data_transfer)
+        task_manager.evaluate(self.model, data_eval)
 
     
     def load_model(self, path: str) -> None:

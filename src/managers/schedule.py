@@ -3,7 +3,8 @@ from managers.base import AlternativelyNamedObject, ObjectManager
 
 
 class BaseSchedule(AlternativelyNamedObject):
-    pass
+    def run_train(self, data):
+        raise Exception("Not Implemented!")
 
 
 class ClassificationSchedule(BaseSchedule):

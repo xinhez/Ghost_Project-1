@@ -81,9 +81,9 @@ class Data(NamedObject):
         return Dataset(self.modalities, batches, labels)
 
 
-    def create_dataloader(self, model):
+    def create_dataloader(self, model, batch_size=1000):
         dataset = self.create_dataset(model)
-        return DataLoader(dataset, batch_size=model.cfg.batch_size, shuffle=True)
+        return DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
 
 class EvaluateData(Data):
@@ -97,7 +97,7 @@ class InferData(Data):
     @staticmethod
     def validate_modalities(modalities, modalities_provided, input_sizes):
         if len(modalities) != len(modalities_provided):
-            raise Exception("Please provide the claimed number of modalities.")
+            raise Exception("Please check the claimed number of modalities information for data to be inferred.")
 
         for modality_index in modalities_provided:
             if modality_index >= len(input_sizes):
@@ -110,7 +110,7 @@ class InferData(Data):
 
         modality_sizes = [(n_modality, input_size) for input_size in input_sizes]
 
-        full_modalities = np.zeros(modality_sizes)
+        full_modalities = [np.zeros(modality_size) for modality_size in modality_sizes]
 
         for (i, modality) in zip(modalities_provided, modalities):
             full_modalities[i] = modality
