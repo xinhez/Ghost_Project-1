@@ -54,7 +54,7 @@ class Model(Module):
             discriminator(self.translations[i][i]) for i, discriminator in enumerate(self.discriminators)
         ]
 
-        return self.fused_latents, self.translations, self.cluster_outputs
+        return self.latents, self.fused_latents, self.translations, self.cluster_outputs
 
 
     def save_model(self, path):

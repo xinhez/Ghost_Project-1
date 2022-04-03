@@ -3,7 +3,7 @@ from managers.base import AlternativelyNamedObject, ObjectManager
 
 
 class BaseSchedule(AlternativelyNamedObject):
-    def run_train(self, data):
+    def step(self, modalities, labels, translations, cluster_outputs):
         raise Exception("Not Implemented!")
 
 
@@ -32,7 +32,6 @@ class ScheduleManager(ObjectManager):
     Schedule
 
     Each schedule determines which losses to compute and which optimizers should step.
-    It should also save the best performing model based on its reference loss term.
     """
     name = 'schedules'
     constructors = [
