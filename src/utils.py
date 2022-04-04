@@ -1,4 +1,3 @@
-import copy
 import numbers
 import numpy as np
 import torch

@@ -15,7 +15,7 @@ class MLP(Module):
 
         self.layers = ModuleList()
 
-        for i in range(config.n_layers):
+        for i in range(config.n_layer):
             self.layers.append(Linear(in_features=input_sizes[i], out_features=output_sizes[i], bias=config.use_biases[i]))
 
             if config.dropouts[i] > 0:
@@ -44,7 +44,7 @@ def autocomplete_mlp_config_attribute(config, attribute):
         setattr(config, attribute, [convert_to_lowercase(c) for c in config_to_complete])
     else:
         config_to_complete = convert_to_lowercase(config_to_complete)
-        setattr(config, attribute, [config_to_complete] * config.n_layers)
+        setattr(config, attribute, [config_to_complete] * config.n_layer)
 
 
 def autocomplete_mlp_config(config):

@@ -50,12 +50,12 @@ class Data(NamedObject):
 
     
     @property
-    def n_batches(self):
+    def n_batch(self):
         return count_unique(self.batches)
 
 
     @property
-    def n_samples(self):
+    def n_sample(self):
         return len(self.modalities[0])
 
 
@@ -63,7 +63,7 @@ class Data(NamedObject):
         if isinstance(batches_or_batch, list):
             self.batches = batches_or_batch
         else:
-            self.batches = [batches_or_batch for _ in range(self.n_samples)]
+            self.batches = [batches_or_batch for _ in range(self.n_sample)]
 
 
     def validate_batches(self, batch_or_batches):
@@ -81,7 +81,7 @@ class Data(NamedObject):
         return Dataset(self.modalities, batches, labels)
 
 
-    def create_dataloader(self, model, batch_size=1000):
+    def create_dataloader(self, model, batch_size):
         dataset = self.create_dataset(model)
         return DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
@@ -127,7 +127,7 @@ class InferData(Data):
 
 
 class TrainData(Data):
-    name = 'data_train'
+    name = 'train'
 
 
     def validate_labels(self, labels_or_None):

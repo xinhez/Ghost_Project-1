@@ -1,4 +1,4 @@
-class LabelEncoder():
+class LabelEncoder:
     def __init__(self):
         self.unique_labels = {}
 

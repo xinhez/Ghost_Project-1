@@ -6,6 +6,15 @@ from src.config import create_model_config_from_data
 from src.managers.fuser import FuserManager
 from src.models.labelEncoder import LabelEncoder
 from src.models.mlp import MLP
+from src.models.optimizer import Optimizer
+
+
+class ModuleNames():
+    encoders       = 'encoders'
+    decoders       = 'decoders'
+    discriminators = 'discriminators'
+    fusers         = 'fusers'
+    clusters       = 'clusters'
 
 
 class Model(Module):
@@ -13,6 +22,8 @@ class Model(Module):
     Model
     """
     name = 'Model'
+    
+
     def __init__(self, config):
         super().__init__()
         self.data_label_encoder = LabelEncoder() 
@@ -21,16 +32,27 @@ class Model(Module):
         self.encoders       = create_module_list(MLP,          config.encoders)
         self.decoders       = create_module_list(MLP,          config.decoders)
         self.discriminators = create_module_list(MLP,          config.discriminators)
-        self.fusers         = create_module_list(FuserManager, config.fusion_methods)
+        self.fusers         = create_module_list(FuserManager, config.fusers)
         self.clusters       = create_module_list(MLP,          config.clusters)
 
-        # self.optimizers
+        self.optimizers = {
+            ModuleNames.encoders:       create_optimizer_list(config.optimizers.encoders,       self.encoders),
+            ModuleNames.decoders:       create_optimizer_list(config.optimizers.decoders,       self.decoders),
+            ModuleNames.discriminators: create_optimizer_list(config.optimizers.discriminators, self.discriminators),
+            ModuleNames.fusers:         create_optimizer_list(config.optimizers.fusers,         self.fusers),
+            ModuleNames.clusters:       create_optimizer_list(config.optimizers.clusters,       self.clusters),
+        }
+
+    
+    def set_device(self, device):
+        self.device = device 
+        self.to(device)
 
 
     def forward(self, modalities, batches, labels):
-        self.modalities = modalities 
-        self.batches    = batches 
-        self.labels     = labels
+        self.modalities = [modality.to(device=self.device) for modality in modalities]
+        self.batches    = batches.to(device=self.device)
+        self.labels     = labels.to(device=self.device)
 
         self.latents = [
             encoder(modality) for (encoder, modality) in zip(self.encoders, modalities)
@@ -94,3 +116,10 @@ def load_model_from_path(path):
         The absolute path to the desired location.
     """
     return torch.load(path)
+
+
+def create_optimizer_list(configs, modules):
+    """\
+    Create a list of optimizers using the given configs for the paired given modules.
+    """
+    return [Optimizer(config, module.parameters()) for config, module in zip(configs, modules)]

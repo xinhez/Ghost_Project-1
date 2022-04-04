@@ -1,59 +1,74 @@
-from torch.nn import Module
-
 from src.managers.base import NamedObject, ObjectManager
 
+class Loss(NamedObject):
+    name = 'Loss'
+    def __init__(self, config):
+        self.weight = config.weight
 
-class LatentMMDLoss(Module, NamedObject):
+
+class LatentMMDLoss(Loss):
     name = 'latent_mmd'
-    def forward(self, model):
+    def __call__(self, model):
         raise Exception("Not Implemented!")
 
 
-class ReconstructionMMDLoss(Module, NamedObject):
+class ReconstructionMMDLoss(Loss):
     name = 'reconstruction_mmd'
-    def forward(self, model):
+    def __call__(self, model):
         raise Exception("Not Implemented!")
 
 
-class CELoss(Module, NamedObject):
-    name = 'ce'
-    def forward(self, model):
+class SELoss(Loss):
+    name = 'se'
+    def __call__(self, model):
         raise Exception("Not Implemented!")
 
 
-class SCELoss(Module, NamedObject):
+class DDC1Loss(Loss):
+    name = 'ddc1'
+    def __call__(self, model):
+        raise Exception("Not Implemented!")
+
+
+class DDC3Loss(Loss):
+    name = 'ddc3'
+    def __call__(self, model):
+        raise Exception("Not Implemented!")
+
+
+class SCELoss(Loss):
     name = 'sce'
-    def forward(self, model):
+    def __call__(self, model):
         raise Exception("Not Implemented!")
 
 
-class ContrastiveLoss(Module, NamedObject):
+class ContrastiveLoss(Loss):
     name = 'contrastive'
-    def forward(self, model):
+    def __call__(self, model):
         raise Exception("Not Implemented!")
 
 
-class DiscriminatorLoss(Module, NamedObject):
+class DiscriminatorLoss(Loss):
     name = 'discriminator'
-    def forward(self, model):
+    def __call__(self, model):
         raise Exception("Not Implemented!")
 
 
-class GeneratorLoss(Module, NamedObject):
+class GeneratorLoss(Loss):
     name = 'generator'
-    def forward(self, model):
+    def __call__(self, model):
         raise Exception("Not Implemented!")
 
 
-class ReconstructionLoss(Module, NamedObject):
+class ReconstructionLoss(Loss):
     name = 'reconstruction'
-    def forward(self, model):
+    def __call__(self, model):
         raise Exception("Not Implemented!")
 
 
-class TranslationLoss(Module, NamedObject):
+class TranslationLoss(Loss):
     name = 'translation'
-    def forward(self, model):
+    def __call__(self, model):
         raise Exception("Not Implemented!")
 
 
@@ -65,7 +80,7 @@ class LossManager(ObjectManager):
         # Classification Losses
         SCELoss, 
         # Clustering Losses
-        CELoss,
+        SELoss, DDC1Loss, DDC3Loss,
         # Translation Losses
         ContrastiveLoss, DiscriminatorLoss, GeneratorLoss, ReconstructionLoss, TranslationLoss,
     ]
