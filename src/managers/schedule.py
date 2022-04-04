@@ -1,9 +1,8 @@
-from copyreg import constructor
-from managers.base import AlternativelyNamedObject, ObjectManager
+from src.managers.base import AlternativelyNamedObject, ObjectManager
 
 
 class BaseSchedule(AlternativelyNamedObject):
-    def step(self, modalities, labels, translations, cluster_outputs):
+    def step(self, model):
         raise Exception("Not Implemented!")
 
 

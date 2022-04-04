@@ -1,4 +1,4 @@
-from utils import convert_to_lowercase
+from src.utils import convert_to_lowercase
 
 
 class NamedObject():

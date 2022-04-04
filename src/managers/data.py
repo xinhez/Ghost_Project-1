@@ -4,8 +4,8 @@ import torch
 from torch.utils.data import Dataset as TorchDataset
 from torch.utils.data import DataLoader
 
-from managers.base import NamedObject, ObjectManager
-from utils import count_unique
+from src.managers.base import NamedObject, ObjectManager
+from src.utils import count_unique
 
 class Dataset(TorchDataset):
     def __init__(self, modalities, batches, labels):

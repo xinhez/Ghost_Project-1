@@ -2,10 +2,10 @@ import torch
 
 from torch.nn import Module, ModuleList
 
-from config import create_model_config_from_data
-from managers.fuser import FuserManager
-from models.labelEncoder import LabelEncoder
-from models.mlp import MLP
+from src.config import create_model_config_from_data
+from src.managers.fuser import FuserManager
+from src.models.labelEncoder import LabelEncoder
+from src.models.mlp import MLP
 
 
 class Model(Module):
@@ -27,8 +27,10 @@ class Model(Module):
         # self.optimizers
 
 
-    def forward(self, modalities):
+    def forward(self, modalities, batches, labels):
         self.modalities = modalities 
+        self.batches    = batches 
+        self.labels     = labels
 
         self.latents = [
             encoder(modality) for (encoder, modality) in zip(self.encoders, modalities)

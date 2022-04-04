@@ -2,10 +2,9 @@ import anndata
 
 from typing import List
 
-from managers.data import Data, DataManager, EvaluateData, InferData, TrainData, TransferData
-from managers.task import BaseTask, TaskManager
-from model import create_model_from_data, load_model_from_path, Model
-from src.managers.task import SupervisedGroupIdentificationTask
+from src.model import create_model_from_data, load_model_from_path, Model
+from src.managers.data import Data, DataManager, EvaluateData, InferData, TrainData, TransferData
+from src.managers.task import BaseTask, TaskManager
 
 
 class UnitedNet():

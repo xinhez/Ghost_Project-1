@@ -1,8 +1,10 @@
 # Ignore storage
 data
+**/.ipynb_checkpoints
 
 # Ignore python generated files
 **/__pycache__
+**/*.pyc
 
-# Ignore testing files
-**/test*
+# Ignore developer testing files
+dev_test.ipynb

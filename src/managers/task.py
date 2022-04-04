@@ -1,36 +1,44 @@
-from managers.base import AlternativelyNamedObject, ObjectManager
-from managers.schedule import ClassificationSchedule, ClusteringSchedule, TranslationSchedule
-from utils import combine_tensor_lists
+from src.managers.base import AlternativelyNamedObject, ObjectManager
+from src.managers.schedule import ClassificationSchedule, ClusteringSchedule, TranslationSchedule
+from src.utils import average_dictionary_values_by_count, combine_tensor_lists, combine_value_dictionaries
 
 
 class BaseTask(AlternativelyNamedObject):
     name = 'inference' 
 
+
+    def evaluate_outputs(self, modalities, labels, outputs):
+        raise Exception("Not Implemented!")
+
     
-    def run_by_batch(self, model, dataloader, Schedule=None):
-        all_latents, all_fused_latents, all_translations, all_cluster_outputs = [], [], [], []
+    def run_by_batch(self, model, dataloader, Schedule=None, evaluate_model=False):
+        all_outputs = []
+        all_losses  = {}
+
         for modalities, *batches_and_maybe_labels in dataloader:
             if len(batches_and_maybe_labels) == 1:
-                batches = batches_and_maybe_labels
+                batches, labels = batches_and_maybe_labels, None
             elif len(batches_and_maybe_labels) == 2:
                 batches, labels = batches_and_maybe_labels
 
-            latents, fused_latents, translations, cluster_outputs = model(modalities)
-            all_latents, all_fused_latents, all_translations, all_cluster_outputs = combine_tensor_lists(
-                (all_latents, all_fused_latents, all_translations, all_cluster_outputs),
-                (latents,     fused_latents,     translations,     cluster_outputs),
-            )
+            outputs = model(modalities, batches, labels)
+            all_outputs = combine_tensor_lists(all_outputs, outputs)
             
             if Schedule is not None:
-                Schedule(model).step(modalities, labels, translations, cluster_outputs)
+                losses = Schedule(model).step(model)
+                all_losses[Schedule.name] = combine_value_dictionaries(all_losses, losses)
 
-        return latents, fused_latents, translations, cluster_outputs
+        if evaluate_model:
+            self.evaluate_outputs(dataloader.dataset.modalities, dataloader.dataset.labels, all_outputs)
+
+        all_losses = average_dictionary_values_by_count(all_losses, len(dataloader.dataset))
+        return all_outputs
 
 
     def evaluate(self, model, data_eval): 
         dataloader_eval = data_eval.create_dataloader(model)
         model.eval() 
-        latents, fused_latents, translations, cluster_outputs = self.run_by_batch(model, dataloader_eval)
+        self.run_by_batch(model, dataloader_eval, evaluate_model=True)
 
 
     def infer(self, model, data_infer): 

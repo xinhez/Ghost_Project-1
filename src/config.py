@@ -1,9 +1,9 @@
 from pydantic import BaseModel
 from typing import List, NewType, Union
 
-from constants import mlp_config_attribute_of_variable_length
-from managers.activation import ReLUActivation
-from managers.fuser import MeanFuser
+from src.constants import mlp_config_attribute_of_variable_length
+from src.managers.activation import ReLUActivation
+from src.managers.fuser import MeanFuser
 
 
 # ==================== New Type Generators ====================

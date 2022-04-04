@@ -1,8 +1,8 @@
 from torch.nn import Module, ModuleList
 from torch.nn import BatchNorm1d, Dropout, Linear
 
-from managers.activation import ActivationManager
-from utils import convert_to_lowercase
+from src.managers.activation import ActivationManager
+from src.utils import convert_to_lowercase
 
 
 class MLP(Module):
