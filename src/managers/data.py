@@ -87,11 +87,11 @@ class Data(NamedObject):
 
 
 class EvaluateData(Data):
-    name = 'data_eval'
+    name = 'evaluate'
 
 
 class InferData(Data):
-    name = 'data_infer'
+    name = 'infer'
 
 
     @staticmethod
@@ -137,7 +137,7 @@ class TrainData(Data):
 
 
 class TransferData(Data):
-    name = 'data_transfer'
+    name = 'transfer'
 
 
     def validate_labels(self, labels_or_None):
@@ -147,7 +147,7 @@ class TransferData(Data):
 
 
 class DataManager(ObjectManager):
-    name = 'data purposes'
+    name = 'datas'
     constructors   = [EvaluateData, InferData, TrainData, TransferData]
 
 

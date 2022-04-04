@@ -9,22 +9,37 @@ class BaseSchedule(AlternativelyNamedObject):
 
 class ClassificationSchedule(BaseSchedule):
     name = 'classification'
+    def __init__(self, losses):
+        self.losses = []
+        self.optimizers = []
 
 
 class ClusteringSchedule(BaseSchedule):
     name = 'clustering'
+    def __init__(self, losses):
+        self.losses = []
+        self.optimizers = []
 
 
 class LatentBatchAlignmentSchedule(BaseSchedule):
     name = 'latent_batch_alignment'
+    def __init__(self, losses):
+        self.losses = []
+        self.optimizers = []
 
 
 class TranslationSchedule(BaseSchedule):
     name = 'translation'
+    def __init__(self, losses):
+        self.losses = []
+        self.optimizers = []
 
 
 class TranslationBatchAlignmentSchedule(BaseSchedule):
     name = 'translation_batch_alignment'
+    def __init__(self, losses):
+        self.losses = []
+        self.optimizers = []
 
 
 class ScheduleManager(ObjectManager):
@@ -35,6 +50,6 @@ class ScheduleManager(ObjectManager):
     """
     name = 'schedules'
     constructors = [
-        ClassificationSchedule, ClusteringSchedule, LatentBatchAlignmentSchedule, TranslationBatchAlignmentSchedule, 
-        TranslationSchedule
+        ClassificationSchedule, ClusteringSchedule, TranslationSchedule,
+        LatentBatchAlignmentSchedule, TranslationBatchAlignmentSchedule, 
     ]

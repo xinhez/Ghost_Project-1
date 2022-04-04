@@ -35,7 +35,9 @@ class Model(Module):
         ]
 
         self.translations = [
-            [decoder(latent) for latent in self.latents] for decoder in self.decoders
+            [
+                decoder(latent) for latent in self.latents
+            ] for decoder in self.decoders
         ]
 
         self.fused_latents = [
