@@ -2,7 +2,8 @@ import torch
 
 from unittest import TestCase
 
-from src.utils import average_dictionary_values_by_count, count_unique, convert_to_lowercase, combine_tensor_lists, sum_value_dictionaries
+from src.utils import average_dictionary_values_by_count, count_unique, convert_to_lowercase, combine_tensor_lists
+from src.utils import sum_value_dictionaries, sum_value_lists
 
 
 class TestUtils(TestCase):
@@ -83,3 +84,11 @@ class TestUtils(TestCase):
         }
 
         self.assertRaises(Exception, sum_value_dictionaries, d, d)
+
+    
+    def test_sum_value_lists(self):
+        self.assertEqual([], sum_value_lists([],[]))
+        self.assertEqual([1], sum_value_lists([], [1]))
+        self.assertEqual([1], sum_value_lists([1], []))
+        self.assertEqual([3], sum_value_lists([1], [2]))
+        self.assertRaises(Exception, sum_value_lists, [1], [2, 3])

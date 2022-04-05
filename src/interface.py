@@ -2,7 +2,7 @@ import anndata
 
 from typing import List
 
-from src.config import ScheduleConfig
+from src.config import ModelConfig, ScheduleConfig
 from src.model import create_model_from_data, load_model_from_path, Model
 from src.managers.data import Data, DataManager, EvaluateData, InferData, TrainData, TransferData
 from src.managers.task import CustomizedTask, TaskManager
@@ -153,7 +153,7 @@ class UnitedNet():
         batch_key_infer:     str       = None,
         batch_size:          int       = 100,
         save_log_path:       str       = None,
-        input_sizes:         List[int] = None,
+        modality_sizes:         List[int] = None,
         device:              str       = 'cpu',
     ):
         """\
@@ -162,12 +162,12 @@ class UnitedNet():
         self._check_model_exist()
         self.model.set_device(device)
         
-        if input_sizes is None:
+        if modality_sizes is None:
             self._check_data_exist()
 
         data_infer = DataManager.format_anndatas(
             InferData.name, adatas_infer, batch_index_infer, batch_key_infer, 
-            modalities_provided=modalities_provided, input_sizes=input_sizes or self.data.input_sizes,
+            modalities_provided=modalities_provided, modality_sizes=modality_sizes or self.data.modality_sizes,
         )
 
         task_manager = TaskManager.get_constructor_by_name(CustomizedTask.name)()
@@ -191,6 +191,15 @@ class UnitedNet():
             The absolute path to the desired location.
         """
         self.model.save_model(path)
+
+
+    def update_model_config(self, config: ModelConfig) -> None:
+        """\
+        Update the model configurations.
+        """
+        self._check_model_exist()
+
+        self.model.update_config(config)
 
 
     def _get_data(self):

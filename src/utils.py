@@ -1,5 +1,6 @@
 import numbers
 import numpy as np
+import random
 import torch
 
 
@@ -53,6 +54,13 @@ def combine_tensor_lists(list0, list1):
     return combined_lists
 
 
+def fix_random_seed(seed=3407):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+
+
 def sum_value_dictionaries(dictionary0, dictionary1):
     """\
     Sum values in dictionaries. 
@@ -72,3 +80,21 @@ def sum_value_dictionaries(dictionary0, dictionary1):
         else:
             combined_dictionary[key] = dictionary0.get(key, 0) + dictionary1.get(key, 0)
     return combined_dictionary
+
+
+def sum_value_lists(list0, list1):
+    """\
+    Sum values in lists. 
+    This method does not check types if at least one of the supplied dictionaries is empty.
+    """
+    if len(list0) == 0:
+        return list1
+    if len(list1) == 0:
+        return list0
+    elif len(list0) != len(list1):
+        raise Exception("Please sum value lists of the same length.")
+    else:
+        combined_list = []
+        for value0, value1 in zip(list0, list1):
+            combined_list.append(value0 + value1)
+    return combined_list

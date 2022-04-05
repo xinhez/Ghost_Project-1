@@ -7,4 +7,4 @@ data
 **/*.pyc
 
 # Ignore developer testing files
-dev_test.ipynb
+dev_test*

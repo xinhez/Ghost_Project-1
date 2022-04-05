@@ -25,12 +25,3 @@ class ActivationManager(Module, ObjectManager):
     """
     name = 'activations'
     constructors = [ReLUActivation, SigmoidActivation, SoftmaxActivation, TanhActivation]
-
-
-    def __init__(self, method):
-        super().__init__()
-        self.layer = ActivationManager.get_constructor_by_name(method)()
-    
-
-    def forward(self, x):
-        return self.layer(x)

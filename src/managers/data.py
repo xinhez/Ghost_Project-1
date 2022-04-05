@@ -1,11 +1,14 @@
 import numpy as np
 import torch
 
+from sklearn.utils import class_weight
 from torch.utils.data import Dataset as TorchDataset
 from torch.utils.data import DataLoader
 
 from src.managers.base import NamedObject, ObjectManager
+from src.managers.technique import DefaultTechnique
 from src.utils import count_unique
+
 
 class Dataset(TorchDataset):
     def __init__(self, modalities, batches, labels):
@@ -30,23 +33,30 @@ class Dataset(TorchDataset):
 class Data(NamedObject):
     name = 'Data'
 
+    technique = DefaultTechnique.name
+
+
+    @staticmethod
+    def is_binary_modality(modality):
+        unique_values = np.unique(modality)
+        return len(unique_values) == 2 and unique_values[0] == 0 and unique_values[1] == 1
+
+
     def __init__(self, modalities, batches_or_batch, labels_or_None, *_):
         self.validate_batches(batches_or_batch)
-        self.validate_labels(labels_or_None)
-
-        self.modalities = modalities
+        self.save_modalities(modalities)
         self.save_batches(batches_or_batch)
-        self.labels = labels_or_None
+        self.save_labels(labels_or_None)
 
 
     @property
-    def input_sizes(self):
+    def modality_sizes(self):
         return [modality.shape[1] for modality in self.modalities]
 
     
     @property
-    def output_size(self):
-        return count_unique(self.labels)
+    def n_label(self):
+        return 
 
     
     @property
@@ -55,8 +65,20 @@ class Data(NamedObject):
 
 
     @property
+    def n_modality(self):
+        return len(self.modalities)
+
+
+    @property
     def n_sample(self):
         return len(self.modalities[0])
+
+
+    def save_modalities(self, modalities):
+        self.modalities = modalities
+        self.binary_modality_flags = [
+            Data.is_binary_modality(modality) for modality in modalities
+        ]
 
 
     def save_batches(self, batches_or_batch):
@@ -65,14 +87,22 @@ class Data(NamedObject):
         else:
             self.batches = [batches_or_batch for _ in range(self.n_sample)]
 
+        
+    def save_labels(self, labels_or_None):
+        self.labels = labels_or_None
+        if labels_or_None is None:
+            self.class_weights = None 
+            self.n_label = None
+        else:
+            self.class_weights = class_weight.compute_class_weight(
+                'balanced', classes=np.unique(self.labels), y=self.labels
+            )
+            self.n_label = count_unique(self.labels)
+
 
     def validate_batches(self, batch_or_batches):
         if batch_or_batches is None:
             raise Exception("Unknow reason caused None batches.")
-
-
-    def validate_labels(self, *_):
-        pass            
 
 
     def create_dataset(self, model):
@@ -95,20 +125,20 @@ class InferData(Data):
 
 
     @staticmethod
-    def validate_modalities(modalities, modalities_provided, input_sizes):
+    def validate_modalities(modalities, modalities_provided, modality_sizes):
         if len(modalities) != len(modalities_provided):
             raise Exception("Please check the claimed number of modalities information for data to be inferred.")
 
         for modality_index in modalities_provided:
-            if modality_index >= len(input_sizes):
+            if modality_index >= len(modality_sizes):
                 raise Exception("The provided modality index exceeds the registered data modality number.")
                 
 
     @staticmethod
-    def autofill_modalities(modalities, modalities_provided, input_sizes):
-        n_modality = len(input_sizes)
+    def autofill_modalities(modalities, modalities_provided, modality_sizes):
+        n_modality = len(modality_sizes)
 
-        modality_sizes = [(n_modality, input_size) for input_size in input_sizes]
+        modality_sizes = [(n_modality, modality_size) for modality_size in modality_sizes]
 
         full_modalities = [np.zeros(modality_size) for modality_size in modality_sizes]
 
@@ -118,32 +148,40 @@ class InferData(Data):
         return full_modalities
 
 
-    def __init__(self, modalities, batches_or_batch, labels_or_None, modalities_provided, input_sizes):
-        InferData.validate_modalities(modalities, modalities_provided, input_sizes)
+    def __init__(self, modalities, batches_or_batch, labels_or_None, modalities_provided, modality_sizes):
+        InferData.validate_modalities(modalities, modalities_provided, modality_sizes)
 
-        modalities = InferData.autofill_modalities(modalities, modalities_provided, input_sizes)
+        modalities = InferData.autofill_modalities(modalities, modalities_provided, modality_sizes)
 
-        super().__init__(modalities, batches_or_batch, labels_or_None, modalities_provided, input_sizes)
+        super().__init__(modalities, batches_or_batch, labels_or_None, modalities_provided, modality_sizes)
 
 
 class TrainData(Data):
     name = 'train'
 
+    
+    def __init__(self, modalities, batches_or_batch, labels_or_None, *args):
+        self.validate_labels(labels_or_None)
+        super().__init__(modalities, batches_or_batch, labels_or_None, *args)
+
 
     def validate_labels(self, labels_or_None):
         if labels_or_None is None:
             raise Exception("Training data must have non-None labels.")
-        super().validate_labels(labels_or_None)
 
 
 class TransferData(Data):
     name = 'transfer'
 
+    
+    def __init__(self, modalities, batches_or_batch, labels_or_None, *args):
+        self.validate_labels(labels_or_None)
+        super().__init__(modalities, batches_or_batch, labels_or_None, *args)
+
 
     def validate_labels(self, labels_or_None):
         if labels_or_None is None:
             raise Exception("Transfer data must have non-None labels.")
-        super().validate_labels(labels_or_None)
 
 
 class DataManager(ObjectManager):
@@ -159,7 +197,7 @@ class DataManager(ObjectManager):
     @staticmethod
     def format_anndatas(
         data_purpose, adatas, batch_index, batch_key, label_index=None, label_key=None, 
-        modalities_provided=[], input_sizes=[], 
+        modalities_provided=[], modality_sizes=[], 
     ):
         DataManager.validate_anndatas(data_purpose, adatas, batch_index, batch_key, label_index, label_key)
 
@@ -169,7 +207,7 @@ class DataManager(ObjectManager):
         
         constructor = DataManager.get_constructor_by_name(data_purpose)
         
-        return constructor(modalities, batches_or_batch, labels_or_None, modalities_provided, input_sizes)
+        return constructor(modalities, batches_or_batch, labels_or_None, modalities_provided, modality_sizes)
 
 
     @staticmethod

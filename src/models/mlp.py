@@ -1,7 +1,8 @@
+from pydantic import constr
 from torch.nn import Module, ModuleList
 from torch.nn import BatchNorm1d, Dropout, Linear
 
-from src.managers.activation import ActivationManager
+from src.managers.activation import ActivationManager, SoftmaxActivation
 from src.utils import convert_to_lowercase
 
 
@@ -25,7 +26,14 @@ class MLP(Module):
                 self.layers.append(BatchNorm1d(output_sizes[i]))
             
             if config.activation_methods[i] is not None:
-                self.layers.append(ActivationManager(config.activation_methods[i]))
+                if (i+1) == config.n_layer and config.is_binary_input:
+                    constructor = SoftmaxActivation
+                else:
+                    constructor = ActivationManager.get_constructor_by_name(config.activation_methods[i])
+                if constructor == SoftmaxActivation:
+                    self.layers.append(constructor(dim=1))
+                else:
+                    self.layers.append(constructor())
 
     
     def forward(self, x):

@@ -1,3 +1,5 @@
+import numpy as np 
+
 from itertools import chain
 
 from src.config import LossConfig
@@ -8,6 +10,7 @@ from src.managers.loss import LatentMMDLoss, ReconstructionMMDLoss
 from src.managers.loss import SCELoss
 from src.managers.loss import SELoss, DDC1Loss, DDC3Loss
 from src.managers.loss import ContrastiveLoss, DiscriminatorLoss, GeneratorLoss, ReconstructionLoss, TranslationLoss
+from src.utils import sum_value_lists
 
 
 class BaseSchedule(AlternativelyNamedObject):
@@ -29,13 +32,25 @@ class BaseSchedule(AlternativelyNamedObject):
         for optimizer in self.optimizers:
             optimizer.zero_grad()
 
+
+        # Compute all losses
         losses = {}
+        accumulated_head_losses = []
         for loss in self.losses:
-            losses[loss.name] = loss(model)
+            losses[loss.name], head_losses = loss(model)
             losses[loss.name].backward()
 
+            if head_losses is not None:
+                accumulated_head_losses = sum_value_lists(accumulated_head_losses, head_losses)
+
+        # Step the optimizers
         for optimizer in self.optimizers:
             optimizer.step()
+
+
+        # Set the best head if the losses are based on head.
+        if len(accumulated_head_losses) > 0:
+            model.best_head = np.argmin(accumulated_head_losses)
 
         return losses
 
@@ -53,7 +68,9 @@ class ClassificationSchedule(BaseSchedule):
 class ClusteringSchedule(BaseSchedule):
     name = 'clustering'
     loss_configs = [
-        LossConfig(name=SELoss.name), LossConfig(name=DDC1Loss.name), LossConfig(name=DDC3Loss.name), LossConfig(name=ReconstructionLoss.name)
+        LossConfig(name=SELoss.name), 
+        LossConfig(name=DDC1Loss.name), LossConfig(name=DDC3Loss.name), 
+        LossConfig(name=ReconstructionLoss.name)
     ]
     optimizer_modules = [
         ModuleNames.fusers, ModuleNames.clusters

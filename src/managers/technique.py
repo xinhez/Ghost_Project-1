@@ -1,0 +1,79 @@
+from src.config import FuserConfig, MLPConfig, OptimizerConfig, Optimizers, ModelConfig
+from src.managers.base import NamedObject, ObjectManager
+from src.managers.fuser import WeightedMeanFuser
+
+
+class DefaultTechnique(NamedObject):
+    name = 'default'
+
+    @staticmethod
+    def get_default_config(data):
+        latent_size                = 16
+        discriminator_output_size  = 32
+        autoencoder_hidden_sizes   = [16, 16]
+        discriminator_hidden_sizes = [64]
+        n_head                     = 3
+        fusion_method              = WeightedMeanFuser.name
+        cluster_hidden_sizes       = [100]
+
+        return ModelConfig(
+            input_sizes   = data.modality_sizes, 
+            output_size   = data.n_label,
+            n_batch       = data.n_batch,
+            class_weights = data.class_weights,
+            encoders = [
+                MLPConfig(
+                    input_size      = input_size,
+                    output_size     = latent_size,
+                    hidden_sizes    = autoencoder_hidden_sizes,
+                    is_binary_input = False,
+                ) 
+                for input_size in data.modality_sizes
+            ],
+            decoders = [
+                MLPConfig(
+                    input_size      = latent_size,
+                    output_size     = input_size,
+                    hidden_sizes    = list(reversed(autoencoder_hidden_sizes)),
+                    is_binary_input = data.binary_modality_flags[modality_index],
+                ) 
+                for modality_index, input_size in enumerate(data.modality_sizes)
+            ],
+            discriminators = [
+                MLPConfig(
+                    input_size      = input_size,
+                    output_size     = discriminator_output_size,
+                    hidden_sizes    = discriminator_hidden_sizes,
+                    is_binary_input = False,
+                ) 
+                for input_size in data.modality_sizes
+            ],
+            fusers = [
+                FuserConfig(
+                    method=fusion_method,
+                    n_modality=data.n_modality,
+                ) 
+                for _ in range(n_head)
+            ],
+            clusters = [
+                MLPConfig(
+                    input_size      = latent_size,
+                    output_size     = data.n_label,
+                    hidden_sizes    = cluster_hidden_sizes,
+                    is_binary_input = False,
+                ) 
+                for _ in range(n_head)
+            ],
+            optimizers = Optimizers(
+                encoders       = [OptimizerConfig() for _ in data.modality_sizes],
+                decoders       = [OptimizerConfig() for _ in data.modality_sizes],
+                discriminators = [OptimizerConfig() for _ in data.modality_sizes],
+                fusers         = [OptimizerConfig() for _ in range(n_head)],
+                clusters       = [OptimizerConfig() for _ in range(n_head)],
+            )
+        ) 
+
+
+class TechniqueManager(ObjectManager):
+    name = 'techniques'
+    constructors = [DefaultTechnique]

@@ -3,7 +3,6 @@ from typing import List, NewType, Union
 
 from src.constants import mlp_config_attribute_of_variable_length
 from src.managers.activation import ReLUActivation
-from src.managers.fuser import WeightedMeanFuser
 
 
 # ==================== New Type Generators ====================
@@ -51,9 +50,10 @@ class FuserConfig(Config):
 # ==================== MLP Config Definition ====================
 class MLPConfig(Config):
     # ===== sizes =====
-    input_size:   int
-    output_size:  int
-    hidden_sizes: List[int]
+    input_size:      int
+    output_size:     int
+    hidden_sizes:    List[int]
+    is_binary_input: bool
     # ===== parameters =====
     dropouts:           type_or_typelist(float)             = 0
     use_biases:         type_or_typelist(bool)              = False
@@ -66,17 +66,6 @@ class MLPConfig(Config):
     @property
     def n_layer(self):
         return 1 + len(self.hidden_sizes)
-
-
-def create_MLP_config(input_size, output_size, hidden_sizes):
-    """\
-    create_MLP_config
-    """
-    return MLPConfig(
-        input_size   = input_size,
-        output_size  = output_size,
-        hidden_sizes = hidden_sizes,
-    )
 
 
 # ==================== Optimizer Config Definition ====================
@@ -108,16 +97,17 @@ class LossConfig(Config):
 # ==================== Schedule Config Definition ====================
 class ScheduleConfig(Config):
     name:              str
-    losses:            none_or_typelist(str) = None
-    optimizer_modules: none_or_typelist(str) = None
+    losses:            none_or_typelist(LossConfig) = None
+    optimizer_modules: none_or_typelist(str)        = None
 
     
 # ==================== Model Config Definition ====================
 class ModelConfig(Config):
     # ===== sizes =====
-    input_sizes: List[int]
-    output_size: int
-    n_batch:     int
+    input_sizes:   List[int]
+    output_size:   none_or_type(int)
+    n_batch:       int
+    class_weights: none_or_typelist(float)
     # ===== architecture =====
     encoders:       List[MLPConfig]
     decoders:       List[MLPConfig]
@@ -126,76 +116,19 @@ class ModelConfig(Config):
     clusters:       List[MLPConfig]
     optimizers:     Optimizers
 
-    @property
-    def n_heads(self):
-        if len(self.fusers) != len(self.clusters):
-            raise Exception("Model must have the same number of fusers and clusters.")
-        return len(self.fusers)
 
-
-class Default():
-    latent_size                = 16
-    discriminator_output_size  = 32
-    autoencoder_hidden_sizes   = [16, 16]
-    discriminator_hidden_sizes = [64]
-    n_head                     = 3
-    fusion_method              = WeightedMeanFuser.name
-    cluster_hidden_sizes       = [100]
-
-
-def create_model_config(
-    input_sizes, output_size, n_batch, 
-    encoders_configs       = None,
-    decoders_configs       = None,
-    discriminators_configs = None, 
-    fusers_configs         = None, 
-    clusters_configs       = None,
-    optimizers             = None,
-):
-    """\
-    create_model_config
-    """
-    n_modality = len(input_sizes)
-
-    return ModelConfig(
-        input_sizes = input_sizes, 
-        output_size = output_size,
-        n_batch     = n_batch,
-        encoders = encoders_configs or [
-            create_MLP_config(input_size, Default.latent_size, Default.autoencoder_hidden_sizes) 
-            for input_size in input_sizes
-        ],
-        decoders = decoders_configs or [
-            create_MLP_config(Default.latent_size, input_size, list(reversed(Default.autoencoder_hidden_sizes)))
-            for input_size in input_sizes
-        ],
-        discriminators = discriminators_configs or [
-            create_MLP_config(input_size, Default.discriminator_output_size, Default.discriminator_hidden_sizes)
-            for input_size in input_sizes
-        ],
-        fusers = fusers_configs or [
-            FuserConfig(
-                method=Default.fusion_method,
-                n_modality=n_modality,
-            ) 
-            for _ in range(Default.n_head)
-        ],
-        clusters = clusters_configs or [
-            create_MLP_config(Default.latent_size, output_size, Default.cluster_hidden_sizes) 
-            for _ in range(Default.n_head)
-        ],
-        optimizers = optimizers or Optimizers(
-            encoders       = [OptimizerConfig() for _ in input_sizes],
-            decoders       = [OptimizerConfig() for _ in input_sizes],
-            discriminators = [OptimizerConfig() for _ in input_sizes],
-            fusers         = [OptimizerConfig() for _ in range(Default.n_head)],
-            clusters       = [OptimizerConfig() for _ in range(Default.n_head)],
+def combine_config(current_config, new_config):
+    if current_config is None:
+        return new_config
+    else:
+        return ModelConfig(
+            input_sizes    = current_config.input_sizes,
+            output_size    = current_config.output_size,
+            n_batch        = current_config.n_batch,
+            encoders       = new_config.encoders or current_config.encoders, 
+            decoders       = new_config.decoders or current_config.decoders,
+            discriminators = new_config.discriminators or current_config.new_config,
+            fusers         = new_config.fusers or current_config.fusers,
+            clusters       = new_config.clusters or current_config.clusters,
+            optimizers     = new_config.optimizers or current_config.optimizers,
         )
-    )
-
-
-def create_model_config_from_data(data):
-    """\
-    Create a Model config with the sizes inferred from the given dataset.
-    """
-    return create_model_config(data.input_sizes, data.output_size, data.n_batch)

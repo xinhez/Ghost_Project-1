@@ -4,7 +4,7 @@ from src.config import ScheduleConfig
 from src.logger import Logger
 from src.managers.base import AlternativelyNamedObject, ObjectManager
 from src.managers.schedule import ClassificationSchedule, ClusteringSchedule, ScheduleManager, TranslationSchedule
-from src.utils import average_dictionary_values_by_count, combine_tensor_lists, sum_value_dictionaries
+from src.utils import fix_random_seed, average_dictionary_values_by_count, combine_tensor_lists, sum_value_dictionaries
 
 
 class CustomizedTask(AlternativelyNamedObject):
@@ -21,7 +21,7 @@ class CustomizedTask(AlternativelyNamedObject):
 
     def evaluate_outputs(self, logger, dataset, outputs):
         labels = dataset.labels        
-        _, _, translations, predictions = outputs
+        translations, predictions, *_ = outputs
 
         labels      = labels.detach().numpy()
         predictions = predictions.detach().numpy()
@@ -35,6 +35,7 @@ class CustomizedTask(AlternativelyNamedObject):
 
     
     def run_through_data(self, logger, model, dataloader, schedule=None, evaluate_outputs=False):
+        fix_random_seed()
         all_outputs = []
         all_losses  = {}
 
@@ -55,7 +56,8 @@ class CustomizedTask(AlternativelyNamedObject):
             all_losses = average_dictionary_values_by_count(all_losses, len(dataloader.dataset))
             logger.log_losses(all_losses)
 
-        raise Exception("Logic for best head not implemented.")
+        # Use data_eval to save model
+
         metrics = self.evaluate_outputs(logger, dataloader.dataset, all_outputs) if evaluate_outputs else {}
 
         return all_outputs, metrics
@@ -63,6 +65,7 @@ class CustomizedTask(AlternativelyNamedObject):
 
     def evaluate(self, model, data_eval, batch_size, save_log_path): 
         logger = Logger(save_log_path)
+        logger.log_method_start(self.evaluate.__name__)
         
         dataloader_eval = data_eval.create_dataloader(model, batch_size)
         
@@ -75,6 +78,7 @@ class CustomizedTask(AlternativelyNamedObject):
 
     def infer(self, model, data_infer, batch_size, save_log_path): 
         logger = Logger(save_log_path)
+        logger.log_method_start(self.infer.__name__)
 
         dataloader_infer = data_infer.create_dataloader(model, batch_size)
 
@@ -83,11 +87,13 @@ class CustomizedTask(AlternativelyNamedObject):
         outputs, _ = self.run_through_data(logger, model, dataloader_infer)
 
         raise Exception("Re-infer not implemented!")
+        raise Exception("AnnData Processing.")
         return outputs
 
     
     def train(self, model, data, batch_size, n_epoch, schedule_configs, save_log_path): 
         logger = Logger(save_log_path)
+        logger.log_method_start(self.train.__name__)
 
         self.update_schedules(model, schedule_configs)
 
@@ -95,7 +101,7 @@ class CustomizedTask(AlternativelyNamedObject):
 
         model.train()
         for epoch in range(n_epoch):
-            logger.log_epoch_start(epoch, self.train.__name__)
+            logger.log_epoch_start(epoch)
 
             for schedule in self.schedules:
                 logger.log_schedule_start(schedule)
@@ -105,11 +111,12 @@ class CustomizedTask(AlternativelyNamedObject):
 
     def transfer(self, model, data, data_transfer, n_epoch, schedule_configs, save_log_path): 
         logger = Logger(save_log_path)
+        logger.log_method_start(self.transfer.__name__)
 
         self.update_schedules(model, schedule_configs)
 
         for epoch in range(n_epoch):
-            logger.log_epoch_start(epoch, self.transfer.__name__)
+            logger.log_epoch_start(epoch)
             for schedule in self.schedules:
                 logger.log_schedule_start(schedule)
                 raise Exception("Not Implemented!")

@@ -2,8 +2,9 @@ import torch
 
 from torch.nn import Module, ModuleList
 
-from src.config import create_model_config_from_data
+from src.config import combine_config
 from src.managers.fuser import FuserManager
+from src.managers.technique import TechniqueManager
 from src.models.labelEncoder import LabelEncoder
 from src.models.mlp import MLP
 from src.models.optimizer import Optimizer
@@ -26,14 +27,22 @@ class Model(Module):
 
     def __init__(self, config):
         super().__init__()
+        self.config = None
         self.data_label_encoder = LabelEncoder() 
         self.data_batch_encoder = LabelEncoder()
+        self.update_config(config)
+
+    
+    def update_config(self, config):
+        config = combine_config(self.config, config)
+        self.config = config
 
         self.encoders       = create_module_list(MLP,          config.encoders)
         self.decoders       = create_module_list(MLP,          config.decoders)
         self.discriminators = create_module_list(MLP,          config.discriminators)
         self.fusers         = create_module_list(FuserManager, config.fusers)
         self.clusters       = create_module_list(MLP,          config.clusters)
+        self.best_head      = 0 
 
         self.optimizers = {
             ModuleNames.encoders:       create_optimizer_list(config.optimizers.encoders,       self.encoders),
@@ -42,6 +51,13 @@ class Model(Module):
             ModuleNames.fusers:         create_optimizer_list(config.optimizers.fusers,         self.fusers),
             ModuleNames.clusters:       create_optimizer_list(config.optimizers.clusters,       self.clusters),
         }
+        
+
+    @property
+    def n_head(self):
+        if len(self.fusers) != len(self.clusters):
+            raise Exception("Model must have the same number of fusers and clusters.")
+        return len(self.fusers)
 
     
     def set_device(self, device):
@@ -80,7 +96,11 @@ class Model(Module):
             discriminator(self.translations[i][i]) for i, discriminator in enumerate(self.discriminators)
         ]
 
-        return self.latents, self.fused_latents, self.translations, self.cluster_outputs
+        self.predictions = [
+            self.cluster_outputs[head].argmax(axis=1) for head in range(self.n_head)
+        ]
+        
+        return self.translations, self.predictions[self.best_head], self.fused_latents[self.best_head]
 
 
     def save_model(self, path):
@@ -105,7 +125,8 @@ def create_model_from_data(data):
     """\
     Create a new model based on the given dataset.
     """
-    return Model(create_model_config_from_data(data))
+    technique = TechniqueManager.get_constructor_by_name(data.technique)()
+    return Model(technique.get_default_config(data))
 
 
 def load_model_from_path(path):
