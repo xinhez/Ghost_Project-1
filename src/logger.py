@@ -18,27 +18,27 @@ class Logger:
 
 
     def log_losses(self, losses):
-        self.print_or_save("{self.tab}{self.tab}Losses")
+        self.print_or_save(f"{self.tab}{self.tab}Losses")
         messages = [f"{self.tab}{self.tab}{self.tab}{key}: {losses[key]}" for key in losses]
         self.print_or_save('\n'.join(messages))
 
     
     def log_evaluation_metrics(self, metrics):
-        self.print_or_save("Metrics")
-        messages = [f"{self.tab}{key}: {metrics[key]}" for key in metrics]
+        self.print_or_save(f"{self.tab}Metrics")
+        messages = [f"{self.tab}{self.tab}{key}: {metrics[key]}" for key in metrics]
         self.print_or_save('\n'.join(messages))
 
 
-    def log_epoch_start(self, epoch, group):
-        message = f"{self.tab}Epoch {epoch} ===================="
+    def log_epoch_start(self, epoch, n_epoch):
+        message = f"{self.tab}-------------------- Epoch {epoch} / {n_epoch} --------------------"
         self.print_or_save(message)
 
 
     def log_schedule_start(self, schedule):
-        message = f"{self.tab}Schedule {schedule.name}"
+        message = f"{self.tab}Schedule: {schedule.name}"
         self.print_or_save(message)
 
     
     def log_method_start(self, method):
-        message = f"==================== {method} ===================="
+        message = f"{method.upper()}"
         self.print_or_save(message)

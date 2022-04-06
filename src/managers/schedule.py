@@ -1,4 +1,5 @@
-import numpy as np 
+import numpy as np
+import torch
 
 from itertools import chain
 
@@ -7,8 +8,8 @@ from src.model import ModuleNames
 from src.managers.base import AlternativelyNamedObject, ObjectManager
 from src.managers.loss import LossManager
 from src.managers.loss import LatentMMDLoss, ReconstructionMMDLoss
-from src.managers.loss import SCELoss
-from src.managers.loss import SELoss, DDC1Loss, DDC3Loss
+from src.managers.loss import CrossEntropyLoss
+from src.managers.loss import SelfEntropyLoss, DDC1Loss, DDC3Loss
 from src.managers.loss import ContrastiveLoss, DiscriminatorLoss, GeneratorLoss, ReconstructionLoss, TranslationLoss
 from src.utils import sum_value_lists
 
@@ -36,21 +37,23 @@ class BaseSchedule(AlternativelyNamedObject):
         # Compute all losses
         losses = {}
         accumulated_head_losses = []
+        total_loss = 0
         for loss in self.losses:
             losses[loss.name], head_losses = loss(model)
-            losses[loss.name].backward()
+            # TODO: Investigate potential slowdown
+            total_loss += losses[loss.name]
 
             if head_losses is not None:
                 accumulated_head_losses = sum_value_lists(accumulated_head_losses, head_losses)
 
         # Step the optimizers
+        total_loss.backward()
         for optimizer in self.optimizers:
             optimizer.step()
 
-
         # Set the best head if the losses are based on head.
         if len(accumulated_head_losses) > 0:
-            model.best_head = np.argmin(accumulated_head_losses)
+            model.best_head = torch.argmin(torch.Tensor(accumulated_head_losses))
 
         return losses
 
@@ -58,7 +61,8 @@ class BaseSchedule(AlternativelyNamedObject):
 class ClassificationSchedule(BaseSchedule):
     name = 'classification'
     loss_configs = [
-        LossConfig(name=SCELoss.name), LossConfig(name=ReconstructionLoss.name), LossConfig(name=ContrastiveLoss.name)
+        LossConfig(name=CrossEntropyLoss.name), LossConfig(name=ReconstructionLoss.name), 
+        # LossConfig(name=ContrastiveLoss.name),
     ]
     optimizer_modules = [
         ModuleNames.encoders, ModuleNames.fusers, ModuleNames.clusters
@@ -68,7 +72,7 @@ class ClassificationSchedule(BaseSchedule):
 class ClusteringSchedule(BaseSchedule):
     name = 'clustering'
     loss_configs = [
-        LossConfig(name=SELoss.name), 
+        LossConfig(name=SelfEntropyLoss.name), 
         LossConfig(name=DDC1Loss.name), LossConfig(name=DDC3Loss.name), 
         LossConfig(name=ReconstructionLoss.name)
     ]
@@ -90,9 +94,9 @@ class LatentBatchAlignmentSchedule(BaseSchedule):
 class TranslationSchedule(BaseSchedule):
     name = 'translation'
     loss_configs = [
-        LossConfig(name=ContrastiveLoss.name), 
+        # LossConfig(name=ContrastiveLoss.name), 
         LossConfig(name=ReconstructionLoss.name), LossConfig(name=TranslationLoss.name), 
-        LossConfig(name=DiscriminatorLoss.name),  LossConfig(name=GeneratorLoss.name),
+        # LossConfig(name=DiscriminatorLoss.name),  LossConfig(name=GeneratorLoss.name),
     ]
     optimizer_modules = [
         ModuleNames.encoders, ModuleNames.decoders, ModuleNames.discriminators

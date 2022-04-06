@@ -15,9 +15,9 @@ class Loss(NamedObject):
     @staticmethod
     def compute_distance(is_binary_input, input, output):
         if is_binary_input:
-            return binary_cross_entropy(input, output)
+            return binary_cross_entropy(output, input)
         else:
-            return mse_loss(input, output)
+            return mse_loss(output, input)
 
 
 class LatentMMDLoss(Loss):
@@ -34,8 +34,8 @@ class ReconstructionMMDLoss(Loss):
         return loss, None
 
 
-class SELoss(Loss):
-    name = 'se'
+class SelfEntropyLoss(Loss):
+    name = 'self_entropy'
     based_on_head = True
     def __call__(self, model):
         raise Exception("Not Implemented!")
@@ -58,15 +58,15 @@ class DDC3Loss(Loss):
         return loss, head_losses
 
 
-class SCELoss(Loss):
-    name = 'sce'
+class CrossEntropyLoss(Loss):
+    name = 'cross_entropy'
     based_on_head = True
     def __call__(self, model):
         loss = 0 
         head_losses = []
 
-        for head, (cluster_outputs, labels) in enumerate(zip(model.cluster_outputs, model.labels)):
-            head_losses.append(cross_entropy(cluster_outputs, labels, weight=model.config.class_weights))
+        for head, cluster_outputs in enumerate(model.cluster_outputs):
+            head_losses.append(cross_entropy(cluster_outputs, model.labels, weight=torch.Tensor(model.config.class_weights)))
             loss += head_losses[head]
             
         return loss, head_losses
@@ -100,7 +100,7 @@ class ReconstructionLoss(Loss):
         for modality_index, (translations, modality) in enumerate(zip(model.translations, model.modalities)):
             reconstruction = translations[modality_index]
             loss += Loss.compute_distance(
-                model.config.decoders[modality_index].is_binary_input, modality, reconstruction
+                model.config.encoders[modality_index].is_binary_input, modality, reconstruction
             )
         loss /= model.n_modality
         return loss, None
@@ -110,11 +110,11 @@ class TranslationLoss(Loss):
     name = 'translation'
     def __call__(self, model):
         loss = 0 
-        for modality_from_index, (translations, modality) in enumerate(zip(model.translations, model.modalities)):
-            for modality_to_index, translation in enumerate(translations):
-                if modality_from_index != modality_to_index:
+        for modality_to_index, (translations, modality) in enumerate(zip(model.translations, model.modalities)):
+            for modality_from_index, translation in enumerate(translations):
+                if modality_to_index != modality_from_index:
                     loss += Loss.compute_distance(
-                        model.config.decoders[modality_to_index].is_binary, modality, translation
+                        model.config.encoders[modality_to_index].is_binary_input, modality, translation
                     )
         loss /= (model.n_modality ** 2 - model.n_modality)
         return loss, None
@@ -126,9 +126,9 @@ class LossManager(ObjectManager):
         # Batch Alignment Losses
         LatentMMDLoss, ReconstructionMMDLoss,
         # Classification Losses
-        SCELoss, 
+        CrossEntropyLoss, 
         # Clustering Losses
-        SELoss, DDC1Loss, DDC3Loss,
+        SelfEntropyLoss, DDC1Loss, DDC3Loss,
         # Translation Losses
         ContrastiveLoss, DiscriminatorLoss, GeneratorLoss, ReconstructionLoss, TranslationLoss,
     ]

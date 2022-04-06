@@ -27,7 +27,7 @@ class CustomizedTask(AlternativelyNamedObject):
         predictions = predictions.detach().numpy()
         metrics = {
             'ari': adjusted_rand_score(labels, predictions),
-            'nmi': normalized_mutual_info_score(labels, predictions),
+            'nmi': normalized_mutual_info_score(labels, predictions, average_method="geometric"),
         }
 
         logger.log_evaluation_metrics(metrics)
@@ -50,7 +50,7 @@ class CustomizedTask(AlternativelyNamedObject):
             
             if schedule is not None:
                 losses = schedule.step(model)
-                all_losses[schedule.name] = sum_value_dictionaries(all_losses, losses)
+                all_losses = sum_value_dictionaries(all_losses, losses)
 
         if all_losses: 
             all_losses = average_dictionary_values_by_count(all_losses, len(dataloader.dataset))
@@ -76,7 +76,7 @@ class CustomizedTask(AlternativelyNamedObject):
         return metrics
 
 
-    def infer(self, model, data_infer, batch_size, save_log_path): 
+    def infer(self, model, data_infer, batch_size, save_log_path, modalities_provided): 
         logger = Logger(save_log_path)
         logger.log_method_start(self.infer.__name__)
 
@@ -85,6 +85,9 @@ class CustomizedTask(AlternativelyNamedObject):
         model.eval()
 
         outputs, _ = self.run_through_data(logger, model, dataloader_infer)
+
+        if len(modalities_provided) == 0 or data_infer.n_modality == len(modalities_provided):
+            return outputs
 
         raise Exception("Re-infer not implemented!")
         raise Exception("AnnData Processing.")
@@ -101,7 +104,7 @@ class CustomizedTask(AlternativelyNamedObject):
 
         model.train()
         for epoch in range(n_epoch):
-            logger.log_epoch_start(epoch)
+            logger.log_epoch_start(epoch+1, n_epoch)
 
             for schedule in self.schedules:
                 logger.log_schedule_start(schedule)
@@ -116,7 +119,7 @@ class CustomizedTask(AlternativelyNamedObject):
         self.update_schedules(model, schedule_configs)
 
         for epoch in range(n_epoch):
-            logger.log_epoch_start(epoch)
+            logger.log_epoch_start(epoch+1, n_epoch)
             for schedule in self.schedules:
                 logger.log_schedule_start(schedule)
                 raise Exception("Not Implemented!")

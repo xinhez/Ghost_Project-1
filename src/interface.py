@@ -47,8 +47,8 @@ class UnitedNet():
         label_key_eval:   str                   = None,
         batch_index_eval: int                   = None, 
         batch_key_eval:   str                   = None,
-        n_epoch:          int                   = 2,
-        batch_size:       int                   = 100,
+        n_epoch:          int                   = 1,
+        batch_size:       int                   = 512,
         schedule_configs: List[ScheduleConfig]        = None,
         save_log_path:    str                   = None,
         device:           str                   = 'cpu',
@@ -71,7 +71,7 @@ class UnitedNet():
 
         task_manager = TaskManager.get_constructor_by_name(task)()
         task_manager.train(self.model, self.data, batch_size, n_epoch, schedule_configs, save_log_path)
-        return task_manager.evaluate(self.model, data_eval, save_log_path)
+        return task_manager.evaluate(self.model, data_eval, batch_size, save_log_path)
 
 
     def transfer(self,
@@ -86,8 +86,8 @@ class UnitedNet():
         label_key_eval:       str                   = None,
         batch_index_eval:     int                   = None, 
         batch_key_eval:       str                   = None,
-        n_epoch:              int                   = 2,
-        batch_size:           int                   = 100,
+        n_epoch:              int                   = 1,
+        batch_size:           int                   = 512,
         schedule_configs:     List[ScheduleConfig]        = None,
         save_log_path:        str                   = None,
         device:               str                   = 'cpu',
@@ -125,7 +125,7 @@ class UnitedNet():
         label_key_eval:   str                   = None,
         batch_index_eval: int                   = None, 
         batch_key_eval:   str                   = None,
-        batch_size:       int                   = 100,
+        batch_size:       int                   = 512,
         save_log_path:    str                   = None,
         device:           str                   = 'cpu',
     ):
@@ -147,14 +147,14 @@ class UnitedNet():
 
 
     def infer(self,
-        adatas_infer:        List[anndata.AnnData], 
-        modalities_provided: List,
-        batch_index_infer:   int       = None, 
-        batch_key_infer:     str       = None,
-        batch_size:          int       = 100,
-        save_log_path:       str       = None,
-        modality_sizes:         List[int] = None,
-        device:              str       = 'cpu',
+        adatas_infer:        List[anndata.AnnData] = None, 
+        modalities_provided: List                  = [],
+        batch_index_infer:   int                   = None, 
+        batch_key_infer:     str                   = None,
+        batch_size:          int                   = 512,
+        save_log_path:       str                   = None,
+        modality_sizes:      List[int]             = None,
+        device:              str                   = 'cpu',
     ):
         """\
         Produce inference result for the adatas_infer dataset, or the registered data if the former not provided. 
@@ -165,13 +165,13 @@ class UnitedNet():
         if modality_sizes is None:
             self._check_data_exist()
 
-        data_infer = DataManager.format_anndatas(
+        data_infer = self._format_data_or_retrieve_registered(
             InferData.name, adatas_infer, batch_index_infer, batch_key_infer, 
             modalities_provided=modalities_provided, modality_sizes=modality_sizes or self.data.modality_sizes,
         )
 
         task_manager = TaskManager.get_constructor_by_name(CustomizedTask.name)()
-        return task_manager.infer(self.model, data_infer, batch_size, save_log_path)
+        return task_manager.infer(self.model, data_infer, batch_size, save_log_path, modalities_provided)
 
 
     def load_model(self, path: str) -> None:
@@ -220,11 +220,17 @@ class UnitedNet():
     model = property(_get_model, _set_model)
 
 
-    def _format_data_or_retrieve_registered(self, group, adatas, batch_index, batch_key, label_index, label_key):
+    def _format_data_or_retrieve_registered(self, 
+        group, adatas, batch_index, batch_key, 
+        label_index=None, label_key=None,
+        modalities_provided=[], modality_sizes=[],
+    ):
         if adatas is None:
             return self.data
         else:
-            return DataManager.format_anndatas(group, adatas, batch_index, batch_key, label_index, label_key)
+            return DataManager.format_anndatas(
+                group, adatas, batch_index, batch_key, label_index, label_key, modalities_provided, modality_sizes,
+            )
 
 
     def _check_model_exist(self):

@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 
+from scipy.sparse import issparse
 from sklearn.utils import class_weight
 from torch.utils.data import Dataset as TorchDataset
 from torch.utils.data import DataLoader
@@ -42,6 +43,11 @@ class Data(NamedObject):
         return len(unique_values) == 2 and unique_values[0] == 0 and unique_values[1] == 1
 
 
+    @staticmethod
+    def is_positive_modality(modality):
+        return np.all(modality >= 0)
+
+
     def __init__(self, modalities, batches_or_batch, labels_or_None, *_):
         self.validate_batches(batches_or_batch)
         self.save_modalities(modalities)
@@ -52,11 +58,6 @@ class Data(NamedObject):
     @property
     def modality_sizes(self):
         return [modality.shape[1] for modality in self.modalities]
-
-    
-    @property
-    def n_label(self):
-        return 
 
     
     @property
@@ -79,6 +80,9 @@ class Data(NamedObject):
         self.binary_modality_flags = [
             Data.is_binary_modality(modality) for modality in modalities
         ]
+        self.positive_modality_flags = [
+            Data.is_positive_modality(modality) for modality in modalities
+        ]
 
 
     def save_batches(self, batches_or_batch):
@@ -94,9 +98,9 @@ class Data(NamedObject):
             self.class_weights = None 
             self.n_label = None
         else:
-            self.class_weights = class_weight.compute_class_weight(
+            self.class_weights = list(class_weight.compute_class_weight(
                 'balanced', classes=np.unique(self.labels), y=self.labels
-            )
+            ))
             self.n_label = count_unique(self.labels)
 
 
@@ -265,7 +269,7 @@ class DataManager(ObjectManager):
 
     @staticmethod 
     def get_Xs_from_anndatas(adatas):
-        return [adata.X for adata in adatas]
+        return [adata.X.toarray() if issparse(adata.X) else adata.X for adata in adatas]
 
     
     @staticmethod

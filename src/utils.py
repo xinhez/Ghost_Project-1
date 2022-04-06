@@ -1,4 +1,3 @@
-import numbers
 import numpy as np
 import random
 import torch
@@ -66,19 +65,14 @@ def sum_value_dictionaries(dictionary0, dictionary1):
     Sum values in dictionaries. 
     This method does not check types if at least one of the supplied dictionaries is empty.
     """
-    if len(dictionary0) == 0:
+    if not dictionary0:
         return dictionary1
-    elif len(dictionary1) == 0:
+    elif not dictionary1:
         return dictionary0
         
     combined_dictionary = {}
     for key in set(dictionary0.keys()).union(set(dictionary1.keys())):
-        if not isinstance(dictionary0.get(key, 0), numbers.Number):
-            raise Exception(f"{dictionary0.get(key, 0)} is not supported as dictionary value.")
-        elif not isinstance(dictionary0.get(key, 1), numbers.Number):
-            raise Exception(f"{dictionary0.get(key, 1)} is not supported as dictionary value.")
-        else:
-            combined_dictionary[key] = dictionary0.get(key, 0) + dictionary1.get(key, 0)
+        combined_dictionary[key] = dictionary0.get(key, 0) + dictionary1.get(key, 0)
     return combined_dictionary
 
 

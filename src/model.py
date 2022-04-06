@@ -59,6 +59,11 @@ class Model(Module):
             raise Exception("Model must have the same number of fusers and clusters.")
         return len(self.fusers)
 
+
+    @property
+    def n_modality(self):
+        return len(self.encoders)
+
     
     def set_device(self, device):
         self.device = device 

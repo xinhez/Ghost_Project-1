@@ -1,4 +1,5 @@
-from src.config import FuserConfig, MLPConfig, OptimizerConfig, Optimizers, ModelConfig
+from src.config import ActivationConfig, FuserConfig, MLPConfig, OptimizerConfig, Optimizers, ModelConfig
+from src.managers.activation import ReLUActivation, SigmoidActivation
 from src.managers.base import NamedObject, ObjectManager
 from src.managers.fuser import WeightedMeanFuser
 
@@ -8,13 +9,14 @@ class DefaultTechnique(NamedObject):
 
     @staticmethod
     def get_default_config(data):
-        latent_size                = 16
+        latent_size                = 64
         discriminator_output_size  = 32
-        autoencoder_hidden_sizes   = [16, 16]
+        autoencoder_hidden_sizes   = [64, 64]
         discriminator_hidden_sizes = [64]
         n_head                     = 3
         fusion_method              = WeightedMeanFuser.name
         cluster_hidden_sizes       = [100]
+        n_autoencoder_layer        = 1 + len(autoencoder_hidden_sizes)
 
         return ModelConfig(
             input_sizes   = data.modality_sizes, 
@@ -26,16 +28,30 @@ class DefaultTechnique(NamedObject):
                     input_size      = input_size,
                     output_size     = latent_size,
                     hidden_sizes    = autoencoder_hidden_sizes,
-                    is_binary_input = False,
+                    is_binary_input = data.binary_modality_flags[modality_index],
+                    activations     = ActivationConfig(method=ReLUActivation.name),
                 ) 
-                for input_size in data.modality_sizes
+                for modality_index, input_size in enumerate(data.modality_sizes)
             ],
             decoders = [
                 MLPConfig(
                     input_size      = latent_size,
                     output_size     = input_size,
                     hidden_sizes    = list(reversed(autoencoder_hidden_sizes)),
-                    is_binary_input = data.binary_modality_flags[modality_index],
+                    is_binary_input = False,
+                    activations     = [
+                        ActivationConfig(method=SigmoidActivation.name) 
+                        if n_layer + 1 == n_autoencoder_layer and data.binary_modality_flags[modality_index] else  
+                            None
+                            if (n_layer + 1 == n_autoencoder_layer and 
+                                not data.positive_modality_flags[modality_index]) else
+                                ActivationConfig(method=ReLUActivation.name)
+                        for n_layer in range(n_autoencoder_layer)
+                    ],
+                    use_batch_norms = [
+                        n_layer + 1 != n_autoencoder_layer
+                        for n_layer in range(n_autoencoder_layer)
+                    ]
                 ) 
                 for modality_index, input_size in enumerate(data.modality_sizes)
             ],

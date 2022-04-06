@@ -1,8 +1,10 @@
+import torch
+
 from pydantic import BaseModel
 from typing import List, NewType, Union
 
-from src.constants import mlp_config_attribute_of_variable_length
 from src.managers.activation import ReLUActivation
+from src.managers.fuser import WeightedMeanFuser
 
 
 # ==================== New Type Generators ====================
@@ -41,26 +43,29 @@ class Config(BaseModel):
         return self.__class__.__name__
 
 
+# ==================== Activation Config Definition ====================
+class ActivationConfig(Config):
+    method: str = ReLUActivation.name
+
+
 # ==================== Fuser Config Definition ====================
 class FuserConfig(Config):
     n_modality: int
-    method:     str = 'weighted_mean'
+    method:     str = WeightedMeanFuser.name
 
 
 # ==================== MLP Config Definition ====================
 class MLPConfig(Config):
     # ===== sizes =====
-    input_size:      int
-    output_size:     int
-    hidden_sizes:    List[int]
-    is_binary_input: bool
+    input_size:          int
+    output_size:         int
+    hidden_sizes:        List[int]
+    is_binary_input:     bool
     # ===== parameters =====
-    dropouts:           type_or_typelist(float)             = 0
-    use_biases:         type_or_typelist(bool)              = False
-    use_batch_norms:    type_or_typelist(bool)              = True
-    activation_methods: type_or_typelist(none_or_type(str)) = ReLUActivation.name
-    # ===== static =====
-    attribute_of_variable_length = [*mlp_config_attribute_of_variable_length]
+    activations:     type_or_typelist(none_or_type(ActivationConfig)) = None
+    dropouts:        type_or_typelist(float)                          = 0
+    use_biases:      type_or_typelist(bool)                           = False
+    use_batch_norms: type_or_typelist(bool)                           = True
 
 
     @property
@@ -75,7 +80,7 @@ class SchedulerConfig(Config):
 
 
 class OptimizerConfig(Config):
-    learning_rate: float                         = 0.001
+    learning_rate: float                         = 0.01
     clip_norm:     none_or_type(float)           = 25.0
     scheduler:     none_or_type(SchedulerConfig) = None
 
