@@ -24,13 +24,13 @@ class BaseSchedule(AlternativelyNamedObject):
             for loss_config in loss_configs
         ]
 
-        optimizer_modules = config.optimizer_modules or self.optimizer_modules
-        self.optimizers = list(chain.from_iterable([model.optimizers[module] for module in optimizer_modules]))
+        model.create_optimizer_for_schedule(
+            config.optimizer, self.name, config.optimizer.modules or self.optimizer_modules
+        )
 
 
     def step(self, model):
-        for optimizer in self.optimizers:
-            optimizer.zero_grad()
+        model.optimizers_by_schedule[self.name].zero_grad()
 
 
         # Compute all losses
@@ -39,7 +39,6 @@ class BaseSchedule(AlternativelyNamedObject):
         total_loss = 0
         for loss in self.losses:
             losses[loss.name], head_losses = loss(model)
-            # TODO: Investigate potential slowdown
             total_loss += losses[loss.name]
 
             if head_losses is not None:
@@ -47,8 +46,7 @@ class BaseSchedule(AlternativelyNamedObject):
 
         # Step the optimizers
         total_loss.backward()
-        for optimizer in self.optimizers:
-            optimizer.step()
+        model.optimizers_by_schedule[self.name].step()
 
         # Set the best head if the losses are based on head.
         if len(accumulated_head_losses) > 0:

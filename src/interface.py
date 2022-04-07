@@ -5,7 +5,8 @@ from typing import List
 
 from src.config import ModelConfig, ScheduleConfig
 from src.model import create_model_from_data, load_model_from_path, Model
-from src.managers.data import Data, DataManager, EvaluateData, InferData, TrainData, TransferData
+from src.managers.data import Data, DataManager
+from src.managers.data import EvaluationData, InferenceData, TrainingData, TransferenceData, ValidationData
 from src.managers.task import CustomizedTask, TaskManager
 from src.utils import set_random_seed
 
@@ -40,23 +41,23 @@ class UnitedNet:
             key to look up label information from the reference adata.
         """
         self.data = DataManager.format_anndatas(
-            TrainData.name, adatas, batch_index, batch_key, label_index, label_key
+            TrainingData.name, adatas, batch_index, batch_key, label_index, label_key
         )
         self.model = create_model_from_data(self.data)
 
 
     def fit(self, 
-        task:             str                   = CustomizedTask.name,
-        adatas_eval:      List[anndata.AnnData] = None, 
-        label_index_eval: int                   = None, 
-        label_key_eval:   str                   = None,
-        batch_index_eval: int                   = None, 
-        batch_key_eval:   str                   = None,
-        n_epoch:          int                   = 1,
-        batch_size:       int                   = 512,
-        schedule_configs: List[ScheduleConfig]        = None,
-        save_log_path:    str                   = None,
-        device:           str                   = 'cpu',
+        task:                 str,
+        adatas_validate:      List[anndata.AnnData] = None, 
+        label_index_validate: int                   = None, 
+        label_key_validate:   str                   = None,
+        batch_index_validate: int                   = None, 
+        batch_key_validate:   str                   = None,
+        n_epoch:              int                   = 1,
+        batch_size:           int                   = 512,
+        schedule_configs:     List[ScheduleConfig]  = None,
+        save_log_path:        str                   = None,
+        device:               str                   = 'cpu',
     ):
         """\
         Fitting the current model on the saved training dataset.
@@ -70,32 +71,33 @@ class UnitedNet:
 
         self._check_data_exist()
              
-        data_eval = self._format_data_or_retrieve_registered(
-            EvaluateData.name, adatas_eval, batch_index_eval, batch_key_eval, label_index_eval, label_key_eval
+        data_validation = self._format_data_or_retrieve_registered(
+            ValidationData.name, adatas_validate, 
+            batch_index_validate, batch_key_validate, 
+            label_index_validate, label_key_validate
         )
 
         task_manager = TaskManager.get_constructor_by_name(task)()
-        task_manager.train(self.model, self.data, batch_size, n_epoch, schedule_configs, save_log_path)
-        return task_manager.evaluate(self.model, data_eval, batch_size, save_log_path)
+        task_manager.train(schedule_configs, self.model, self.data, data_validation, batch_size, n_epoch, save_log_path)
 
 
     def transfer(self,
-        adatas_transfer:      List[anndata.AnnData], 
-        label_index_transfer: int, 
-        label_key_transfer:   str,
-        task:                 str                   = CustomizedTask.name,
-        batch_index_transfer: int                   = None, 
-        batch_key_transfer:   str                   = None,
-        adatas_eval:          List[anndata.AnnData] = None, 
-        label_index_eval:     int                   = None, 
-        label_key_eval:       str                   = None,
-        batch_index_eval:     int                   = None, 
-        batch_key_eval:       str                   = None,
-        n_epoch:              int                   = 1,
-        batch_size:           int                   = 512,
-        schedule_configs:     List[ScheduleConfig]        = None,
-        save_log_path:        str                   = None,
-        device:               str                   = 'cpu',
+        task:                     str,
+        adatas_transference:      List[anndata.AnnData], 
+        label_index_transference: int, 
+        label_key_transference:   str,
+        batch_index_transference: int                   = None, 
+        batch_key_transference:   str                   = None,
+        adatas_validation:        List[anndata.AnnData] = None, 
+        label_index_validation:   int                   = None, 
+        label_key_validation:     str                   = None,
+        batch_index_validation:   int                   = None, 
+        batch_key_validation:     str                   = None,
+        n_epoch:                  int                   = 1,
+        batch_size:               int                   = 512,
+        schedule_configs:         List[ScheduleConfig]  = None,
+        save_log_path:            str                   = None,
+        device:                   str                   = 'cpu',
     ):
         """\
         Perform ransfer learning on the adatas_transfer dataset. 
@@ -109,30 +111,32 @@ class UnitedNet:
         self._check_data_exist()
 
         data_transfer = DataManager.format_anndatas(
-            TransferData.name, 
-            adatas_transfer, batch_index_transfer, batch_key_transfer, label_index_transfer, label_key_transfer
+            TransferenceData.name, adatas_transference, 
+            batch_index_transference, batch_key_transference, 
+            label_index_transference, label_key_transference
         )
              
-        data_eval = self._format_data_or_retrieve_registered(
-            EvaluateData.name, adatas_eval, batch_index_eval, batch_key_eval, label_index_eval, label_key_eval
+        data_validation = self._format_data_or_retrieve_registered(
+            ValidationData.name, adatas_validation, 
+            batch_index_validation, batch_key_validation, 
+            label_index_validation, label_key_validation
         )
 
         task_manager = TaskManager.get_constructor_by_name(task)()
         task_manager.transfer(
-            self.model, self.data, data_transfer, batch_size, n_epoch, schedule_configs, save_log_path
+            schedule_configs, self.model, self.data, data_transfer, data_validation, batch_size, n_epoch, save_log_path
         )
-        task_manager.evaluate(self.model, data_eval, batch_size, save_log_path)
 
 
     def evaluate(self, 
-        adatas_eval:      List[anndata.AnnData] = None, 
-        label_index_eval: int                   = None, 
-        label_key_eval:   str                   = None,
-        batch_index_eval: int                   = None, 
-        batch_key_eval:   str                   = None,
-        batch_size:       int                   = 512,
-        save_log_path:    str                   = None,
-        device:           str                   = 'cpu',
+        adatas_evaluation:      List[anndata.AnnData] = None, 
+        label_index_evaluation: int                   = None, 
+        label_key_evaluation:   str                   = None,
+        batch_index_evaluation: int                   = None, 
+        batch_key_evaluation:   str                   = None,
+        batch_size:             int                   = 512,
+        save_log_path:          str                   = None,
+        device:                 str                   = 'cpu',
     ):
         """\
         Evaluate the current model with the adatas_eval dataset, or the registered data if the former not provided.
@@ -143,23 +147,25 @@ class UnitedNet:
         self._check_model_exist()
         self.model.set_device(device)
 
-        data_eval = self._format_data_or_retrieve_registered(
-            EvaluateData.name, adatas_eval, batch_index_eval, batch_key_eval, label_index_eval, label_key_eval
+        data_evaluation = self._format_data_or_retrieve_registered(
+            EvaluationData.name, adatas_evaluation, 
+            batch_index_evaluation, batch_key_evaluation, 
+            label_index_evaluation, label_key_evaluation
         )
 
         task_manager = TaskManager.get_constructor_by_name(CustomizedTask.name)()
-        return task_manager.evaluate(self.model, data_eval, batch_size, save_log_path)
+        return task_manager.evaluate(self.model, data_evaluation, batch_size, save_log_path)
 
 
     def infer(self,
-        adatas_infer:        List[anndata.AnnData] = None, 
-        modalities_provided: List                  = [],
-        batch_index_infer:   int                   = None, 
-        batch_key_infer:     str                   = None,
-        batch_size:          int                   = 512,
-        save_log_path:       str                   = None,
-        modality_sizes:      List[int]             = None,
-        device:              str                   = 'cpu',
+        adatas_inference:        List[anndata.AnnData] = None, 
+        modalities_provided:     List                  = [],
+        batch_index_inference:   int                   = None, 
+        batch_key_inference:     str                   = None,
+        batch_size:              int                   = 512,
+        save_log_path:           str                   = None,
+        modality_sizes:          List[int]             = None,
+        device:                  str                   = 'cpu',
     ):
         """\
         Produce inference result for the adatas_infer dataset, or the registered data if the former not provided. 
@@ -170,13 +176,13 @@ class UnitedNet:
         if modality_sizes is None:
             self._check_data_exist()
 
-        data_infer = self._format_data_or_retrieve_registered(
-            InferData.name, adatas_infer, batch_index_infer, batch_key_infer, 
+        data_inference = self._format_data_or_retrieve_registered(
+            InferenceData.name, adatas_inference, batch_index_inference, batch_key_inference, 
             modalities_provided=modalities_provided, modality_sizes=modality_sizes or self.data.modality_sizes,
         )
 
         task_manager = TaskManager.get_constructor_by_name(CustomizedTask.name)()
-        return task_manager.infer(self.model, data_infer, batch_size, save_log_path, modalities_provided)
+        return task_manager.infer(self.model, data_inference, batch_size, save_log_path, modalities_provided)
 
 
     def load_model(self, path: str) -> None:
@@ -240,7 +246,9 @@ class UnitedNet:
 
     def _check_model_exist(self):
         if self.model is None:
-            raise Exception("Please first generate model config with register_anndata or load model weights with load_model.")
+            raise Exception(
+                "Please first generate model config with register_anndata or load model weights with load_model."
+            )
 
 
     def _check_data_exist(self):

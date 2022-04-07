@@ -109,23 +109,28 @@ class Data(NamedObject):
             raise Exception("Unknow reason caused None batches.")
 
 
+    def validate_labels(self, labels_or_None):
+        if labels_or_None is None:
+            raise Exception(f"{self.name} data must have non-None labels.")
+
+
     def create_dataset(self, model):
         batches = model.data_batch_encoder.fit_transform(self.batches)
         labels = None if self.labels is None else model.data_label_encoder.fit_transform(self.labels)
         return Dataset(self.modalities, batches, labels)
 
 
-    def create_dataloader(self, model, batch_size):
+    def create_dataloader(self, model, batch_size, shuffle):
         dataset = self.create_dataset(model)
-        return DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
-class EvaluateData(Data):
-    name = 'evaluate'
+class EvaluationData(Data):
+    name = 'evaluation'
 
 
-class InferData(Data):
-    name = 'infer'
+class InferenceData(Data):
+    name = 'inference'
 
 
     @staticmethod
@@ -153,15 +158,15 @@ class InferData(Data):
 
 
     def __init__(self, modalities, batches_or_batch, labels_or_None, modalities_provided, modality_sizes):
-        InferData.validate_modalities(modalities, modalities_provided, modality_sizes)
+        InferenceData.validate_modalities(modalities, modalities_provided, modality_sizes)
 
-        modalities = InferData.autofill_modalities(modalities, modalities_provided, modality_sizes)
+        modalities = InferenceData.autofill_modalities(modalities, modalities_provided, modality_sizes)
 
         super().__init__(modalities, batches_or_batch, labels_or_None, modalities_provided, modality_sizes)
 
 
-class TrainData(Data):
-    name = 'train'
+class TrainingData(Data):
+    name = 'training'
 
     
     def __init__(self, modalities, batches_or_batch, labels_or_None, *args):
@@ -169,28 +174,17 @@ class TrainData(Data):
         super().__init__(modalities, batches_or_batch, labels_or_None, *args)
 
 
-    def validate_labels(self, labels_or_None):
-        if labels_or_None is None:
-            raise Exception("Training data must have non-None labels.")
+class TransferenceData(TrainingData):
+    name = 'transference'
 
 
-class TransferData(Data):
-    name = 'transfer'
-
-    
-    def __init__(self, modalities, batches_or_batch, labels_or_None, *args):
-        self.validate_labels(labels_or_None)
-        super().__init__(modalities, batches_or_batch, labels_or_None, *args)
-
-
-    def validate_labels(self, labels_or_None):
-        if labels_or_None is None:
-            raise Exception("Transfer data must have non-None labels.")
+class ValidationData(TrainingData):
+    name = 'validation'
 
 
 class DataManager(ObjectManager):
     name = 'datas'
-    constructors   = [EvaluateData, InferData, TrainData, TransferData]
+    constructors   = [EvaluationData, InferenceData, TrainingData, TransferenceData, ValidationData]
 
 
     label = 'label'

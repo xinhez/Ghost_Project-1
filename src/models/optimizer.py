@@ -12,10 +12,9 @@ class Optimizer(Module):
         self.parameters = parameters
         self.clip_norm = config.clip_norm
         self.optimizer = Adam(parameters, lr=config.learning_rate)
-        if config.scheduler is None:
-            self.scheduler = None
-        else:
-            self.scheduler = StepLR(self.optimizer, step_size=config.scheduler.step_size, gamma=config.scheduler.gamma)
+        self.scheduler = None if config.scheduler is None else StepLR(
+            self.optimizer, step_size=config.scheduler.step_size, gamma=config.scheduler.gamma
+        )
 
 
     def zero_grad(self):
@@ -27,7 +26,5 @@ class Optimizer(Module):
             clip_grad_norm_(self.parameters, self.clip_norm)
         self.optimizer.step()
 
-    
-    def step_scheduler(self):
         if self.scheduler is not None:
             self.scheduler.step()

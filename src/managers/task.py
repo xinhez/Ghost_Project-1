@@ -1,10 +1,13 @@
+import torch
+
 from sklearn.metrics import normalized_mutual_info_score,adjusted_rand_score
+from torch.utils.data.sampler import SequentialSampler
 
 from src.config import ScheduleConfig
 from src.logger import Logger
 from src.managers.base import AlternativelyNamedObject, ObjectManager
 from src.managers.schedule import ClassificationSchedule, ClusteringSchedule, ScheduleManager, TranslationSchedule
-from src.utils import amplify_value_dictionary_by_batch_size, average_dictionary_values_by_count, combine_tensor_lists, sum_value_dictionaries
+from src.utils import amplify_value_dictionary_by_sample_size, average_dictionary_values_by_sample_size, combine_tensor_lists, sum_value_dictionaries
 
 
 class CustomizedTask(AlternativelyNamedObject):
@@ -23,18 +26,26 @@ class CustomizedTask(AlternativelyNamedObject):
         labels = dataset.labels        
         translations, predictions, *_ = outputs
 
+        accuracy = torch.sum(labels == predictions).detach().data / predictions.shape[0]
+
         labels      = labels.detach().numpy()
         predictions = predictions.detach().numpy()
         metrics = {
+            'acc': accuracy,
             'ari': adjusted_rand_score(labels, predictions),
             'nmi': normalized_mutual_info_score(labels, predictions, average_method="geometric"),
         }
 
-        logger.log_evaluation_metrics(metrics)
+        logger.log_metrics(metrics)
         return metrics
 
     
-    def run_through_data(self, logger, model, dataloader, schedule=None, evaluate_outputs=False):
+    def run_through_data(self, logger, model, dataloader, schedule=None, evaluate_outputs=False, save_best_model=False):
+        if evaluate_outputs and not isinstance(dataloader.sampler, SequentialSampler):
+            raise Exception(
+                "Please only evaluate dataset that is not shuffled (use shuffle=False in data.create_dataloader)."
+            )
+        
         all_outputs = []
         all_losses  = {}
 
@@ -49,14 +60,15 @@ class CustomizedTask(AlternativelyNamedObject):
             
             if schedule is not None:
                 losses = schedule.step(model)
-                losses = amplify_value_dictionary_by_batch_size(losses, len(batches))
+                losses = amplify_value_dictionary_by_sample_size(losses, len(batches))
                 all_losses = sum_value_dictionaries(all_losses, losses)
 
         if all_losses: 
-            all_losses = average_dictionary_values_by_count(all_losses, len(dataloader.dataset))
+            all_losses = average_dictionary_values_by_sample_size(all_losses, len(dataloader.dataset))
             logger.log_losses(all_losses)
 
-        # Use data_eval to save model
+        # if save_best_model:
+        #     raise Exception("Not Implemented")
 
         metrics = self.evaluate_outputs(logger, dataloader.dataset, all_outputs) if evaluate_outputs else {}
 
@@ -67,7 +79,7 @@ class CustomizedTask(AlternativelyNamedObject):
         logger = Logger(save_log_path)
         logger.log_method_start(self.evaluate.__name__)
         
-        dataloader_eval = data_eval.create_dataloader(model, batch_size)
+        dataloader_eval = data_eval.create_dataloader(model, batch_size, shuffle=False)
         
         model.eval() 
 
@@ -80,7 +92,7 @@ class CustomizedTask(AlternativelyNamedObject):
         logger = Logger(save_log_path)
         logger.log_method_start(self.infer.__name__)
 
-        dataloader_infer = data_infer.create_dataloader(model, batch_size)
+        dataloader_infer = data_infer.create_dataloader(model, batch_size, shuffle=False)
 
         model.eval()
 
@@ -93,14 +105,15 @@ class CustomizedTask(AlternativelyNamedObject):
         raise Exception("AnnData Processing.")
         return outputs
 
-    
-    def train(self, model, data, batch_size, n_epoch, schedule_configs, save_log_path): 
+
+    def train(self, schedule_configs, model, data, data_validation, batch_size, n_epoch, save_log_path): 
         logger = Logger(save_log_path)
-        logger.log_method_start(self.train.__name__)
+        logger.log_method_start(self.train.__name__, self.name)
 
         self.update_schedules(model, schedule_configs)
 
-        dataloader = data.create_dataloader(model, batch_size)
+        dataloader = data.create_dataloader(model, batch_size, shuffle=True)
+        datalodaer_validation = data_validation.create_dataloader(model, batch_size, shuffle=False)
 
         model.train()
         for epoch in range(n_epoch):
@@ -110,50 +123,57 @@ class CustomizedTask(AlternativelyNamedObject):
                 logger.log_schedule_start(schedule)
 
                 self.run_through_data(logger, model, dataloader, schedule)
+                self.run_through_data(logger, model, datalodaer_validation, evaluate_outputs=True, save_best_model=True)
 
 
-    def transfer(self, model, data, data_transfer, n_epoch, schedule_configs, save_log_path): 
+    def transfer(
+        self, schedule_configs, model, data, data_transfer, data_validation, batch_size, n_epoch, save_log_path
+    ): 
         logger = Logger(save_log_path)
-        logger.log_method_start(self.transfer.__name__)
+        logger.log_method_start(self.transfer.__name__, self.name)
 
         self.update_schedules(model, schedule_configs)
+
+        datalodaer_validation = data_validation.create_dataloader(model, batch_size, shuffle=False)
 
         for epoch in range(n_epoch):
             logger.log_epoch_start(epoch+1, n_epoch)
             for schedule in self.schedules:
                 logger.log_schedule_start(schedule)
                 raise Exception("Not Implemented!")
+
                 self.run_through_data(logger, model, dataloader, schedule)
+                self.run_through_data(logger, model, datalodaer_validation, evaluate_outputs=True)
 
 
 class CrossModelPredictionTask(CustomizedTask):
     name = 'cross_model_prediction'    
-    def train(self, model, data, batch_size, n_epoch, _, *args): 
+    def train(self, _, *args): 
         schedule_configs = [
             ScheduleConfig(name=ClassificationSchedule.name),
             ScheduleConfig(name=TranslationSchedule.name),
         ]
-        super().train(model, data, batch_size, n_epoch, schedule_configs, *args)
+        super().train(schedule_configs, *args)
 
 
 class SupervisedGroupIdentificationTask(CustomizedTask):
     name = 'supervised_group_identification'
-    def train(self, model, data, batch_size, n_epoch, _, *args): 
+    def train(self, _, *args): 
         schedule_configs = [
             ScheduleConfig(name=TranslationSchedule.name),
             ScheduleConfig(name=ClassificationSchedule.name),
         ]
-        super().train(model, data, batch_size, n_epoch, schedule_configs, *args)
+        super().train(schedule_configs, *args)
 
 
 class UnsupervisedGroupIdentificationTask(CustomizedTask):
     name = 'unsupervised_group_identification'
-    def train(self, model, data, batch_size, n_epoch, _, *args): 
+    def train(self, _, *args): 
         schedule_configs = [
             ScheduleConfig(name=TranslationSchedule.name),
             ScheduleConfig(name=ClusteringSchedule.name),
         ]
-        super().train(model, data, batch_size, n_epoch, schedule_configs, *args)
+        super().train(schedule_configs, *args)
 
 
 class TaskManager(ObjectManager):

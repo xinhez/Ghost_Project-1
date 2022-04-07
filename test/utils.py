@@ -2,14 +2,14 @@ import torch
 
 from unittest import TestCase
 
-from src.utils import average_dictionary_values_by_count, count_unique, convert_to_lowercase, combine_tensor_lists
+from src.utils import average_dictionary_values_by_sample_size, count_unique, convert_to_lowercase, combine_tensor_lists
 from src.utils import sum_value_dictionaries, sum_value_lists
 
 
 class TestUtils(TestCase):
     def test_average_dictionary_values_by_count(self):
-        self.assertRaises(Exception, average_dictionary_values_by_count, {}, 0)
-        self.assertEqual({}, average_dictionary_values_by_count({}, 1))
+        self.assertRaises(Exception, average_dictionary_values_by_sample_size, {}, 0)
+        self.assertEqual({}, average_dictionary_values_by_sample_size({}, 1))
 
         d = {
             'test_key0': 2,
@@ -19,7 +19,7 @@ class TestUtils(TestCase):
             'test_key0': 1,
             'test_key1': 10,
         }
-        self.assertEqual(expected_d, average_dictionary_values_by_count(d, 2))
+        self.assertEqual(expected_d, average_dictionary_values_by_sample_size(d, 2))
 
 
     def test_count_unique(self):

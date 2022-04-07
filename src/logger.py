@@ -15,27 +15,27 @@ class Logger:
 
 
     def log_losses(self, losses):
-        self.print_or_save(f"{self.tab}{self.tab}Losses")
-        messages = [f"{self.tab}{self.tab}{self.tab}{key}: {losses[key]}" for key in losses]
+        self.print_or_save(f"{self.tab}Losses")
+        messages = [f"{self.tab}{self.tab}{key}: {losses[key]}" for key in sorted(losses.keys())]
         self.print_or_save('\n'.join(messages))
 
     
-    def log_evaluation_metrics(self, metrics):
+    def log_metrics(self, metrics):
         self.print_or_save(f"{self.tab}Metrics")
-        messages = [f"{self.tab}{self.tab}{key}: {metrics[key]}" for key in metrics]
+        messages = [f"{self.tab}{self.tab}{key}: {metrics[key]}" for key in sorted(metrics.keys())]
         self.print_or_save('\n'.join(messages))
 
 
     def log_epoch_start(self, epoch, n_epoch):
-        message = f"{self.tab}-------------------- Epoch {epoch} / {n_epoch} --------------------"
+        message = f"{self.tab}(Epoch {epoch} / {n_epoch})"
         self.print_or_save(message)
 
 
     def log_schedule_start(self, schedule):
-        message = f"{self.tab}Schedule: {schedule.name}"
+        message = f"{self.tab}========== Schedule: {schedule.name} =========="
         self.print_or_save(message)
 
     
-    def log_method_start(self, method):
-        message = f"{method.upper()}"
+    def log_method_start(self, method, task=None):
+        message = f"{method.upper()} {''if task is None else 'Task:'} {'' if task is None else task}"
         self.print_or_save(message)

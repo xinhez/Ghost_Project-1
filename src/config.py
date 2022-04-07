@@ -78,17 +78,10 @@ class SchedulerConfig(Config):
 
 
 class OptimizerConfig(Config):
+    modules:       none_or_typelist(str)         = None
     learning_rate: float                         = 0.01
     clip_norm:     none_or_type(float)           = 25.0
     scheduler:     none_or_type(SchedulerConfig) = None
-
-
-class Optimizers(Config):
-    encoders:       List[OptimizerConfig]
-    decoders:       List[OptimizerConfig]
-    discriminators: List[OptimizerConfig]
-    fusers:         List[OptimizerConfig]
-    clusters:       List[OptimizerConfig]
 
 
 # ==================== Loss Config Definition ====================
@@ -99,9 +92,9 @@ class LossConfig(Config):
 
 # ==================== Schedule Config Definition ====================
 class ScheduleConfig(Config):
-    name:              str
-    losses:            none_or_typelist(LossConfig) = None
-    optimizer_modules: none_or_typelist(str)        = None
+    name:      str
+    losses:    none_or_typelist(LossConfig) = None
+    optimizer: OptimizerConfig              = OptimizerConfig()
 
     
 # ==================== Model Config Definition ====================
@@ -117,7 +110,6 @@ class ModelConfig(Config):
     discriminators: List[MLPConfig]
     fusers:         List[FuserConfig]
     clusters:       List[MLPConfig]
-    optimizers:     Optimizers
 
 
 def combine_config(current_config, new_config):
@@ -128,10 +120,10 @@ def combine_config(current_config, new_config):
             input_sizes    = current_config.input_sizes,
             output_size    = current_config.output_size,
             n_batch        = current_config.n_batch,
+            class_weights  = current_config.class_weights,
             encoders       = new_config.encoders or current_config.encoders, 
             decoders       = new_config.decoders or current_config.decoders,
             discriminators = new_config.discriminators or current_config.new_config,
             fusers         = new_config.fusers or current_config.fusers,
             clusters       = new_config.clusters or current_config.clusters,
-            optimizers     = new_config.optimizers or current_config.optimizers,
         )

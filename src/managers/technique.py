@@ -1,4 +1,4 @@
-from src.config import ActivationConfig, FuserConfig, MLPConfig, OptimizerConfig, Optimizers, ModelConfig
+from src.config import ActivationConfig, FuserConfig, MLPConfig, OptimizerConfig, ModelConfig
 from src.managers.activation import ReLUActivation, SigmoidActivation
 from src.managers.base import NamedObject, ObjectManager
 from src.managers.fuser import WeightedMeanFuser
@@ -80,13 +80,6 @@ class DefaultTechnique(NamedObject):
                 ) 
                 for _ in range(n_head)
             ],
-            optimizers = Optimizers(
-                encoders       = [OptimizerConfig() for _ in data.modality_sizes],
-                decoders       = [OptimizerConfig() for _ in data.modality_sizes],
-                discriminators = [OptimizerConfig() for _ in data.modality_sizes],
-                fusers         = [OptimizerConfig() for _ in range(n_head)],
-                clusters       = [OptimizerConfig() for _ in range(n_head)],
-            )
         ) 
 
 

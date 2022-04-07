@@ -2,18 +2,18 @@ import numpy as np
 import torch
 
 
-def amplify_value_dictionary_by_batch_size(dictionary, batch_size):
+def amplify_value_dictionary_by_sample_size(dictionary, sample_size):
     amplified_dictionary = {}
     for key in dictionary:
-        amplified_dictionary[key] = dictionary[key] * batch_size
+        amplified_dictionary[key] = dictionary[key] * sample_size
     return amplified_dictionary
 
 
-def average_dictionary_values_by_count(dictionary, count):
-    if count < 1:
+def average_dictionary_values_by_sample_size(dictionary, sample_size):
+    if sample_size < 1:
         raise Exception("Please use positive count to average dictionary values.")
     for key in dictionary:
-        dictionary[key] /= count
+        dictionary[key] /= sample_size
     return dictionary
 
 
