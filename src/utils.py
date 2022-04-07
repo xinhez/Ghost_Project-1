@@ -1,5 +1,4 @@
 import numpy as np
-import random
 import torch
 
 
@@ -61,13 +60,13 @@ def combine_tensor_lists(list0, list1):
 
 
 def set_random_seed(n, r, t, seed=3407):
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.deterministic = True
-    np.random.seed(seed)
-    random.seed(seed)
+    t.cuda.manual_seed(seed)
+    t.cuda.manual_seed_all(seed)
+    t.backends.cudnn.benchmark = False
+    t.backends.cudnn.deterministic = True
+    n.random.seed(seed)
+    r.seed(seed)
+    return t.manual_seed(seed)
 
 
 def sum_value_dictionaries(dictionary0, dictionary1):

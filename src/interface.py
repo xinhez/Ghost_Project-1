@@ -1,4 +1,5 @@
 import anndata
+import numpy, random, torch
 
 from typing import List
 
@@ -6,6 +7,10 @@ from src.config import ModelConfig, ScheduleConfig
 from src.model import create_model_from_data, load_model_from_path, Model
 from src.managers.data import Data, DataManager, EvaluateData, InferData, TrainData, TransferData
 from src.managers.task import CustomizedTask, TaskManager
+from src.utils import set_random_seed
+
+
+set_random_seed(numpy, random, torch)
 
 
 class UnitedNet:

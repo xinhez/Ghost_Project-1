@@ -1,4 +1,4 @@
-import numpy, random, torch
+import torch
 
 from torch.nn import Module, ModuleList
 
@@ -8,7 +8,6 @@ from src.managers.technique import TechniqueManager
 from src.models.labelEncoder import LabelEncoder
 from src.models.mlp import MLP
 from src.models.optimizer import Optimizer
-from src.utils import set_random_seed
 
 
 class ModuleNames():
@@ -35,7 +34,6 @@ class Model(Module):
 
     
     def update_config(self, config):
-        set_random_seed(numpy, random, torch)
         config = combine_config(self.config, config)
         self.config = config
 

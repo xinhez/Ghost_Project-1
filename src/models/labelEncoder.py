@@ -18,7 +18,7 @@ class LabelEncoder:
     def fit(self, labels):
         old_unique_labels = set(self.labels_to_indices.keys())
         all_unique_labels = old_unique_labels.union(set(labels))
-        new_unique_labels = list(all_unique_labels.difference(old_unique_labels))
+        new_unique_labels = sorted(list(all_unique_labels.difference(old_unique_labels)))
         self.update_new_labels(new_unique_labels)
 
 

@@ -1,11 +1,7 @@
-import numpy, random, torch
-
 from torch.nn import Module
 from torch.nn.utils import clip_grad_norm_
 from torch.optim import Adam
 from torch.optim.lr_scheduler import StepLR
-
-from src.utils import set_random_seed
 
 
 class Optimizer(Module):
@@ -13,7 +9,6 @@ class Optimizer(Module):
     Optimizer
     """
     def __init__(self, config, parameters):
-        set_random_seed(numpy, random, torch)
         self.parameters = parameters
         self.clip_norm = config.clip_norm
         self.optimizer = Adam(parameters, lr=config.learning_rate)

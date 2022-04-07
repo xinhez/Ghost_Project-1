@@ -1,17 +1,13 @@
-import numpy, random, torch
-
 from torch.nn import Module, ModuleList
 from torch.nn import BatchNorm1d, Dropout, Linear
 
 from src.config import ActivationConfig
 from src.managers.activation import ActivationManager, SoftmaxActivation
-from src.utils import set_random_seed
 
 
 class MLP(Module):
     def __init__(self, config):
         super().__init__()
-        set_random_seed(numpy, random, torch)
         input_sizes = [config.input_size] + config.hidden_sizes
         output_sizes = config.hidden_sizes + [config.output_size]
 
