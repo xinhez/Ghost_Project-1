@@ -1,6 +1,3 @@
-from email import message
-
-
 class Logger:
     tab = '    '
     def __init__(self, save_to_path=None):

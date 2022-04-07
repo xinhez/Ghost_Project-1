@@ -4,7 +4,7 @@ from src.config import ScheduleConfig
 from src.logger import Logger
 from src.managers.base import AlternativelyNamedObject, ObjectManager
 from src.managers.schedule import ClassificationSchedule, ClusteringSchedule, ScheduleManager, TranslationSchedule
-from src.utils import fix_random_seed, average_dictionary_values_by_count, combine_tensor_lists, sum_value_dictionaries
+from src.utils import amplify_value_dictionary_by_batch_size, average_dictionary_values_by_count, combine_tensor_lists, sum_value_dictionaries
 
 
 class CustomizedTask(AlternativelyNamedObject):
@@ -35,7 +35,6 @@ class CustomizedTask(AlternativelyNamedObject):
 
     
     def run_through_data(self, logger, model, dataloader, schedule=None, evaluate_outputs=False):
-        fix_random_seed()
         all_outputs = []
         all_losses  = {}
 
@@ -50,6 +49,7 @@ class CustomizedTask(AlternativelyNamedObject):
             
             if schedule is not None:
                 losses = schedule.step(model)
+                losses = amplify_value_dictionary_by_batch_size(losses, len(batches))
                 all_losses = sum_value_dictionaries(all_losses, losses)
 
         if all_losses: 

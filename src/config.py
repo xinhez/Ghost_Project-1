@@ -1,5 +1,3 @@
-import torch
-
 from pydantic import BaseModel
 from typing import List, NewType, Union
 

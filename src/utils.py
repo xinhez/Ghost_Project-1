@@ -3,6 +3,13 @@ import random
 import torch
 
 
+def amplify_value_dictionary_by_batch_size(dictionary, batch_size):
+    amplified_dictionary = {}
+    for key in dictionary:
+        amplified_dictionary[key] = dictionary[key] * batch_size
+    return amplified_dictionary
+
+
 def average_dictionary_values_by_count(dictionary, count):
     if count < 1:
         raise Exception("Please use positive count to average dictionary values.")
@@ -53,9 +60,12 @@ def combine_tensor_lists(list0, list1):
     return combined_lists
 
 
-def fix_random_seed(seed=3407):
+def set_random_seed(n, r, t, seed=3407):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
     np.random.seed(seed)
     random.seed(seed)
 

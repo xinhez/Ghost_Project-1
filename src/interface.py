@@ -8,7 +8,7 @@ from src.managers.data import Data, DataManager, EvaluateData, InferData, TrainD
 from src.managers.task import CustomizedTask, TaskManager
 
 
-class UnitedNet():
+class UnitedNet:
     """\
     API Interface
     """

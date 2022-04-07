@@ -1,9 +1,9 @@
-import enum
 import torch
 
 from torch.nn.functional import binary_cross_entropy, cross_entropy, mse_loss
 
 from src.managers.base import NamedObject, ObjectManager
+
 
 class Loss(NamedObject):
     name = 'Loss'
