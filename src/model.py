@@ -113,18 +113,19 @@ class Model(Module):
         return len(self.encoders)
 
     
-    def set_device(self, device):
-        self.device = device 
-        self.to(device)
+    def save_device_in_use(self, device):
+        self.device_in_use = device 
 
 
     def forward(self, modalities, batches, labels):
-        self.modalities = [modality.to(device=self.device) for modality in modalities]
-        self.batches    = batches.to(device=self.device)
-        self.labels     = labels.to(device=self.device)
+        self.modalities = [modality.to(device=self.device_in_use) for modality in modalities]
+        self.batches    = batches.to(device=self.device_in_use)
+        self.labels     = labels.to(device=self.device_in_use)
+
+
 
         self.latents = [
-            encoder(modality) for (encoder, modality) in zip(self.encoders, modalities)
+            encoder(modality) for (encoder, modality) in zip(self.encoders, self.modalities)
         ]
 
         self.translations = [
@@ -142,7 +143,7 @@ class Model(Module):
         ]
 
         self.discriminator_real_outputs = [
-            discriminator(modality) for (discriminator, modality) in zip(self.discriminators, modalities)
+            discriminator(modality) for (discriminator, modality) in zip(self.discriminators, self.modalities)
         ]
 
         self.discriminator_fake_outputs = [

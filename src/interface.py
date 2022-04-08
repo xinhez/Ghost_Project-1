@@ -1,5 +1,7 @@
+from os import device_encoding
 import anndata
 import numpy, random, torch
+from regex import D
 
 from typing import List
 
@@ -67,7 +69,7 @@ class UnitedNet:
             Otherwise use the training dataset for evaluation.
         """
         self._check_model_exist()
-        self.model.set_device(device)
+        self.set_device(device)
 
         self._check_data_exist()
              
@@ -106,7 +108,7 @@ class UnitedNet:
             The setting of adata_infer must match the saved adata.
         """
         self._check_model_exist()
-        self.model.set_device(device)
+        self.set_device(device)
 
         self._check_data_exist()
 
@@ -145,7 +147,7 @@ class UnitedNet:
             The setting of adata_eval must match the saved adata.
         """
         self._check_model_exist()
-        self.model.set_device(device)
+        self.set_device(device)
 
         data_evaluation = self._format_data_or_retrieve_registered(
             EvaluationData.name, adatas_evaluation, 
@@ -171,7 +173,7 @@ class UnitedNet:
         Produce inference result for the adatas_infer dataset, or the registered data if the former not provided. 
         """
         self._check_model_exist()
-        self.model.set_device(device)
+        self.set_device(device)
         
         if modality_sizes is None:
             self._check_data_exist()
@@ -211,6 +213,11 @@ class UnitedNet:
         self._check_model_exist()
 
         self.model.update_config(config)
+
+    
+    def set_device(self, device: str='cpu'):
+        self.model.save_device_in_use(device)
+        self.model = self.model.to(device=device)
 
 
     def _get_data(self):

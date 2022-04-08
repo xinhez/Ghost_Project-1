@@ -26,10 +26,11 @@ class CustomizedTask(AlternativelyNamedObject):
         labels = dataset.labels        
         translations, predictions, *_ = outputs
 
-        accuracy = torch.sum(labels == predictions).detach().data / predictions.shape[0]
+        predictions = predictions.detach().cpu()
+        accuracy = torch.sum(labels == predictions).data / predictions.shape[0]
 
-        labels      = labels.detach().numpy()
-        predictions = predictions.detach().numpy()
+        labels      = labels.numpy()
+        predictions = predictions.numpy()
         metrics = {
             'acc': accuracy,
             'ari': adjusted_rand_score(labels, predictions),

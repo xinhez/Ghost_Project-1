@@ -66,7 +66,12 @@ class CrossEntropyLoss(Loss):
         head_losses = []
 
         for head, cluster_outputs in enumerate(model.cluster_outputs):
-            head_losses.append(cross_entropy(cluster_outputs, model.labels, weight=torch.Tensor(model.config.class_weights)))
+            head_losses.append(
+                cross_entropy(
+                    cluster_outputs, model.labels, 
+                    weight=torch.Tensor(model.config.class_weights).to(device=model.device_in_use),
+                )
+            )
             loss += head_losses[head]
             
         return loss, head_losses
