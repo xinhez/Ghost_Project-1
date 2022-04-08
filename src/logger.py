@@ -27,7 +27,7 @@ class Logger:
 
 
     def log_epoch_start(self, epoch, n_epoch):
-        message = f"{self.tab}(Epoch {epoch} / {n_epoch})"
+        message = f"\n{self.tab}(Epoch {epoch} / {n_epoch})"
         self.print_or_save(message)
 
 
