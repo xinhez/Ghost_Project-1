@@ -4,7 +4,7 @@ import torch
 from scipy.sparse import issparse
 from sklearn.utils import class_weight
 from torch.utils.data import Dataset as TorchDataset
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader as TorchDataLoader
 
 from src.managers.base import NamedObject, ObjectManager
 from src.managers.technique import DefaultTechnique
@@ -122,7 +122,7 @@ class Data(NamedObject):
 
     def create_dataloader(self, model, batch_size, shuffle):
         dataset = self.create_dataset(model)
-        return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+        return TorchDataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
 class EvaluationData(Data):

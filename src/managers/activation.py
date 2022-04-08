@@ -1,25 +1,25 @@
-from torch.nn import Module, ReLU, Sigmoid, Softmax, Tanh
+import torch.nn as nn
 
 from src.managers.base import NamedObject, ObjectManager
 
 
-class ReLUActivation(ReLU, NamedObject):
+class ReLUActivation(nn.ReLU, NamedObject):
     name = 'relu'
 
 
-class SigmoidActivation(Sigmoid, NamedObject):
+class SigmoidActivation(nn.Sigmoid, NamedObject):
     name = 'sigmoid'
 
 
-class SoftmaxActivation(Softmax, NamedObject):
+class SoftmaxActivation(nn.Softmax, NamedObject):
     name = 'softmax'
 
 
-class TanhActivation(Tanh, NamedObject):
+class TanhActivation(nn.Tanh, NamedObject):
     name = 'tanh'
 
 
-class ActivationManager(Module, ObjectManager):
+class ActivationManager(nn.Module, ObjectManager):
     """\
     Activation
     """

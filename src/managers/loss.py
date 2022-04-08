@@ -1,6 +1,5 @@
 import torch
-
-from torch.nn.functional import binary_cross_entropy, cross_entropy, mse_loss
+import torch.nn.functional as F
 
 from src.managers.base import NamedObject, ObjectManager
 
@@ -15,9 +14,9 @@ class Loss(NamedObject):
     @staticmethod
     def compute_distance(is_binary_input, input, output):
         if is_binary_input:
-            return binary_cross_entropy(output, input)
+            return F.binary_cross_entropy(output, input)
         else:
-            return mse_loss(output, input)
+            return F.mse_loss(output, input)
 
 
 class LatentMMDLoss(Loss):
@@ -67,7 +66,7 @@ class CrossEntropyLoss(Loss):
 
         for head, cluster_outputs in enumerate(model.cluster_outputs):
             head_losses.append(
-                cross_entropy(
+                F.cross_entropy(
                     cluster_outputs, model.labels, 
                     weight=torch.Tensor(model.config.class_weights).to(device=model.device_in_use),
                 )

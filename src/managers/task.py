@@ -3,11 +3,12 @@ import torch
 from sklearn.metrics import normalized_mutual_info_score,adjusted_rand_score
 from torch.utils.data.sampler import SequentialSampler
 
+import src.utils as utils
+
 from src.config import ScheduleConfig
 from src.logger import Logger
 from src.managers.base import AlternativelyNamedObject, ObjectManager
 from src.managers.schedule import ClassificationSchedule, ClusteringSchedule, ScheduleManager, TranslationSchedule
-from src.utils import amplify_value_dictionary_by_sample_size, average_dictionary_values_by_sample_size, combine_tensor_lists, sum_value_dictionaries
 
 
 class CustomizedTask(AlternativelyNamedObject):
@@ -57,15 +58,15 @@ class CustomizedTask(AlternativelyNamedObject):
                 batches, labels = batches_and_maybe_labels
 
             outputs = model(modalities, batches, labels)
-            all_outputs = combine_tensor_lists(all_outputs, outputs)
+            all_outputs = utils.combine_tensor_lists(all_outputs, outputs)
             
             if schedule is not None:
                 losses = schedule.step(model)
-                losses = amplify_value_dictionary_by_sample_size(losses, len(batches))
-                all_losses = sum_value_dictionaries(all_losses, losses)
+                losses = utils.amplify_value_dictionary_by_sample_size(losses, len(batches))
+                all_losses = utils.sum_value_dictionaries(all_losses, losses)
 
         if all_losses: 
-            all_losses = average_dictionary_values_by_sample_size(all_losses, len(dataloader.dataset))
+            all_losses = utils.average_dictionary_values_by_sample_size(all_losses, len(dataloader.dataset))
             logger.log_losses(all_losses)
 
         # if save_best_model:

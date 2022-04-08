@@ -1,17 +1,16 @@
-from torch.nn import Module, ModuleList
-from torch.nn import BatchNorm1d, Dropout, Linear
+import torch.nn as nn
 
 from src.config import ActivationConfig
 from src.managers.activation import ActivationManager, SoftmaxActivation
 
 
-class MLP(Module):
+class MLP(nn.Module):
     def __init__(self, config):
         super().__init__()
         input_sizes = [config.input_size] + config.hidden_sizes
         output_sizes = config.hidden_sizes + [config.output_size]
 
-        self.layers = ModuleList()
+        self.layers = nn.ModuleList()
 
         for i in range(config.n_layer):
             self.add_linear_layer(input_sizes[i], output_sizes[i], config.use_biases, i)
@@ -23,21 +22,21 @@ class MLP(Module):
     def add_linear_layer(self, input_size, output_size, use_biases, i):
         use_bias = use_biases[i] if isinstance(use_biases, list) else use_biases
         self.layers.append(
-            Linear(in_features=input_size, out_features=output_size, bias=use_bias)
+            nn.Linear(in_features=input_size, out_features=output_size, bias=use_bias)
         )
 
     
     def add_dropout_layer(self, dropouts, i):
         if isinstance(dropouts, list) and dropouts[i] > 0:
-            self.layers.append(Dropout(p=dropouts[i]))
+            self.layers.append(nn.Dropout(p=dropouts[i]))
         elif isinstance(dropouts, float) and dropouts > 0:
-            self.layers.append(Dropout(p=dropouts))
+            self.layers.append(nn.Dropout(p=dropouts))
     
 
     def add_batch_norms_layer(self, use_batch_norms, i, output_size):
         if ((isinstance(use_batch_norms, list) and use_batch_norms[i]) or 
             (isinstance(use_batch_norms, bool) and use_batch_norms)):
-            self.layers.append(BatchNorm1d(output_size))
+            self.layers.append(nn.BatchNorm1d(output_size))
         
     
     def add_activation_layer(self, activations, i):

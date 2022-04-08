@@ -1,7 +1,5 @@
 import torch
 
-from itertools import chain
-
 from src.config import LossConfig
 from src.model import ModuleNames
 from src.managers.base import AlternativelyNamedObject, ObjectManager

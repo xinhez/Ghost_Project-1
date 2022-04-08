@@ -1,8 +1,7 @@
 import torch
+import torch.nn as nn
 
 from itertools import chain
-from torch.nn import Linear, Module, ModuleList, ModuleDict
-from torch.nn.init import kaiming_normal_
 
 from src.config import combine_config
 from src.managers.fuser import FuserManager
@@ -16,7 +15,7 @@ def create_module_list(constructor, configs):
     """\
     Create a list of modules using the given constructor of the given configs.
     """
-    return ModuleList([constructor(config) for config in configs])
+    return nn.ModuleList([constructor(config) for config in configs])
 
 
 class ModuleNames:
@@ -27,7 +26,7 @@ class ModuleNames:
     clusters       = 'clusters'
 
 
-class Model(Module):
+class Model(nn.Module):
     """
     Model
     """
@@ -36,8 +35,8 @@ class Model(Module):
 
     @staticmethod
     def kaiming_init_weights(module):
-        if isinstance(module, Linear):
-            kaiming_normal_(module.weight)
+        if isinstance(module, nn.Linear):
+            nn.init.kaiming_normal_(module.weight)
     
 
     def __init__(self, config):
@@ -52,7 +51,7 @@ class Model(Module):
         config = combine_config(self.config, config)
         self.config = config
 
-        self.modules_by_names = ModuleDict({
+        self.modules_by_names = nn.ModuleDict({
             ModuleNames.encoders:       create_module_list(MLP,          config.encoders),
             ModuleNames.decoders:       create_module_list(MLP,          config.decoders), 
             ModuleNames.discriminators: create_module_list(MLP,          config.discriminators),
