@@ -1,7 +1,7 @@
 from src.config import ActivationConfig, FuserConfig, MLPConfig, ModelConfig
 from src.managers.activation import ReLUActivation, SigmoidActivation
 from src.managers.base import NamedObject, ObjectManager
-from src.managers.fuser import WeightedMeanFuser
+from src.models.fuser import WeightedMeanFuser
 
 
 class DefaultTechnique(NamedObject):

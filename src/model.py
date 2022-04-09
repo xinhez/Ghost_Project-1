@@ -4,8 +4,8 @@ import torch.nn as nn
 from itertools import chain
 
 from src.config import combine_config
-from src.managers.fuser import FuserManager
 from src.managers.technique import TechniqueManager
+from src.models.fuser import FuserManager
 from src.models.labelEncoder import LabelEncoder
 from src.models.mlp import MLP
 from src.models.optimizer import Optimizer

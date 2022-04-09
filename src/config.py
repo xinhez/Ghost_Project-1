@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import List, NewType, Union
 
 from src.managers.activation import ReLUActivation
-from src.managers.fuser import WeightedMeanFuser
+from src.models.fuser import WeightedMeanFuser
 
 
 # ==================== New Type Generators ====================
