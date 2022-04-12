@@ -1,17 +1,16 @@
 import numpy as np
 import torch
+import torch.utils.data as D
 
 from scipy.sparse import issparse
 from sklearn.utils import class_weight
-from torch.utils.data import Dataset as TorchDataset
-from torch.utils.data import DataLoader as TorchDataLoader
 
 from src.managers.base import NamedObject, ObjectManager
 from src.managers.technique import DefaultTechnique
 from src.utils import count_unique
 
 
-class Dataset(TorchDataset):
+class Dataset(D.Dataset):
     def __init__(self, modalities, batches, labels):
         super().__init__()
         self.modalities = [torch.Tensor(modality) for modality in modalities]
@@ -122,7 +121,7 @@ class Data(NamedObject):
 
     def create_dataloader(self, model, batch_size, shuffle):
         dataset = self.create_dataset(model)
-        return TorchDataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+        return D.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
 class EvaluationData(Data):
