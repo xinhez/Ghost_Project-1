@@ -80,6 +80,9 @@ class CrossEntropyLoss(Loss):
 
 
 class ContrastiveLoss(Loss):
+    """\
+    Adapted From: https://github.com/DanielTrosten/mvc/blob/main/src/lib/loss.py
+    """
     name = 'contrastive'
     based_on_head = True
     def __init__(self, config, model):
