@@ -176,7 +176,7 @@ class UnitedNet:
         batch_size:              int                   = 512,
         save_log_path:           str                   = None,
         device:                  str                   = 'cpu',
-    ):
+    ) -> anndata.AnnData:
         """\
         Produce inference result for the adatas_infer dataset, or the registered data if the former not provided. 
         """
