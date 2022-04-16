@@ -278,4 +278,4 @@ class DataManager(ObjectManager):
         if index is None:
             return default
         else:
-            return adatas[index].obs[key]
+            return list(adatas[index].obs[key])

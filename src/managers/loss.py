@@ -29,7 +29,36 @@ class LatentMMDLoss(Loss):
 class ReconstructionMMDLoss(Loss):
     name = 'reconstruction_mmd'
     def __call__(self, model):
-        raise Exception("Not Implemented!")
+        eps = 1e-5
+        loss = 0
+        for modality_index, (translations, modality) in enumerate(zip(model.translations, model.modalities)):
+            reconstruction = translations[modality_index]
+            batches=model.batches
+            
+            ref_batch = 0
+            ref_indices = torch.where(batches == ref_batch)[0]
+            ref_rc = reconstruction[ref_indices]
+            ref_gt = modality[ref_indices]
+            loss += F.mse_loss(ref_rc,ref_gt)
+
+            for nonref_batch in torch.unique(batches):
+                if nonref_batch != ref_batch:
+                    nonref_indices = torch.where(batches == nonref_batch)[0]
+                    nonref_rc = reconstruction[nonref_indices]
+                    nonref_gt = modality[nonref_indices]
+
+                    nonref_rc_mean = torch.mean(nonref_rc, dim=0, keepdim=True)
+                    nonref_rc_std  = torch.std(nonref_rc, dim=0, keepdim=True)
+                    nonref_rc_normalized = (nonref_rc - nonref_rc_mean) / (nonref_rc_std + eps)
+
+                    nonref_gt_mean = torch.mean(nonref_gt, dim=0, keepdim=True)
+                    nonref_gt_std  = torch.std(nonref_gt, dim=0, keepdim=True)
+                    nonref_gt_normalized = (nonref_gt - nonref_gt_mean) / (nonref_gt_std + eps)
+
+                    loss += F.mse_loss(nonref_rc_normalized, nonref_gt_normalized)
+
+        loss /= model.n_modality
+        loss *= self.weight
         return loss, None
 
 

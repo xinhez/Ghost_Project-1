@@ -7,7 +7,8 @@ import src.utils as utils
 from src.config import ScheduleConfig
 from src.logger import Logger
 from src.managers.base import AlternativelyNamedObject, ObjectManager
-from src.managers.schedule import ClassificationSchedule, ClusteringSchedule, ScheduleManager, TranslationSchedule
+from src.managers.schedule import ScheduleManager
+from src.managers.schedule import ClassificationSchedule, ClusteringSchedule, TranslationSchedule
 
 
 class CustomizedTask(AlternativelyNamedObject):
