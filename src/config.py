@@ -86,8 +86,10 @@ class OptimizerConfig(Config):
 
 # ==================== Loss Config Definition ====================
 class LossConfig(Config):
-    name:   str
-    weight: float = 1
+    name:           str
+    weight:         float = 1
+    tau:            float = 0.1
+    sampling_ratio: float = 0.25
 
 
 # ==================== Schedule Config Definition ====================

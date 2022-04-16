@@ -22,7 +22,7 @@ class BaseSchedule(AlternativelyNamedObject):
 
         loss_configs = config.losses or self.loss_configs 
         self.losses = [
-            LossManager.get_constructor_by_name(loss_config.name)(loss_config) 
+            LossManager.get_constructor_by_name(loss_config.name)(loss_config, model)
             for loss_config in loss_configs
         ]
 
@@ -92,7 +92,7 @@ class ClassificationSchedule(BaseSchedule):
     name = 'classification'
     loss_configs = [
         LossConfig(name=CrossEntropyLoss.name), LossConfig(name=ReconstructionLoss.name), 
-        # LossConfig(name=ContrastiveLoss.name),
+        LossConfig(name=ContrastiveLoss.name),
     ]
     optimizer_modules = [
         ModuleNames.encoders, ModuleNames.fusers, ModuleNames.clusters
@@ -124,7 +124,7 @@ class LatentBatchAlignmentSchedule(BaseSchedule):
 class TranslationSchedule(BaseSchedule):
     name = 'translation'
     loss_configs = [
-        # LossConfig(name=ContrastiveLoss.name), 
+        LossConfig(name=ContrastiveLoss.name), 
         LossConfig(name=ReconstructionLoss.name), LossConfig(name=TranslationLoss.name), 
         # LossConfig(name=DiscriminatorLoss.name),  LossConfig(name=GeneratorLoss.name),
     ]

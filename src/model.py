@@ -112,6 +112,16 @@ class Model(nn.Module):
         return len(self.encoders)
 
     
+    @property
+    def n_output(self):
+        return self.config.output_size
+
+
+    @property
+    def n_sample(self):
+        return self.batches.shape[0]
+
+    
     def save_device_in_use(self, device):
         self.device_in_use = device 
 
@@ -119,9 +129,7 @@ class Model(nn.Module):
     def forward(self, modalities, batches, labels):
         self.modalities = [modality.to(device=self.device_in_use) for modality in modalities]
         self.batches    = batches.to(device=self.device_in_use)
-        self.labels     = labels.to(device=self.device_in_use)
-
-
+        self.labels     = labels.to(device=self.device_in_use) if labels is not None else None
 
         self.latents = [
             encoder(modality) for (encoder, modality) in zip(self.encoders, self.modalities)
@@ -148,10 +156,8 @@ class Model(nn.Module):
         self.discriminator_fake_outputs = [
             discriminator(self.translations[i][i]) for i, discriminator in enumerate(self.discriminators)
         ]
-
-        self.predictions = self.cluster_outputs[self.best_head].argmax(axis=1)
         
-        return self.translations, self.predictions, self.fused_latents[self.best_head]
+        return self.translations, self.cluster_outputs[self.best_head], self.fused_latents[self.best_head]
 
 
     def save_model(self, path):

@@ -71,8 +71,10 @@ class CustomizedTask(AlternativelyNamedObject):
 
     def evaluate_outputs(self, logger, dataset, outputs):
         labels = dataset.labels        
-        translations, predictions, *_ = outputs
+        translations, cluster_outputs, *_ = outputs
+        predictions = cluster_outputs.argmax(axis=1)
 
+        # raise Exception("translations Not Implemented!")
         accuracy = torch.sum(labels == predictions).data / predictions.shape[0]
 
         labels      = labels.numpy()
