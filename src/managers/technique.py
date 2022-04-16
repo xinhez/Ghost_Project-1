@@ -13,7 +13,7 @@ class DefaultTechnique(NamedObject):
         discriminator_output_size  = 32
         autoencoder_hidden_sizes   = [64, 64]
         discriminator_hidden_sizes = [64]
-        n_head                     = 3
+        n_head                     = 1
         fusion_method              = WeightedMeanFuser.name
         cluster_hidden_sizes       = [100]
         n_autoencoder_layer        = 1 + len(autoencoder_hidden_sizes)

@@ -91,29 +91,30 @@ class CustomizedTask(AlternativelyNamedObject):
         return metrics
 
 
-    def evaluate(self, model, data_eval, batch_size, save_log_path): 
+    def evaluate(self, model, data_eval, save_log_path): 
         logger = Logger(save_log_path)
         logger.log_method_start(self.evaluate.__name__)
         
-        dataloader_eval = data_eval.create_dataloader(model, batch_size, shuffle=False)
+        dataloader_eval = data_eval.create_dataloader(model, shuffle=False)
         
         model.eval() 
-
-        outputs = self.run_through_data(logger, model, dataloader_eval, infer_model=True)
+        with torch.no_grad():
+            outputs = self.run_through_data(logger, model, dataloader_eval, infer_model=True)
         metrics = self.evaluate_outputs(logger, dataloader_eval.dataset, outputs)
 
         return metrics
 
 
-    def infer(self, model, data_infer, batch_size, save_log_path, modalities_provided): 
+    def infer(self, model, data_infer, save_log_path, modalities_provided): 
         logger = Logger(save_log_path)
         logger.log_method_start(self.infer.__name__)
 
-        dataloader_infer = data_infer.create_dataloader(model, batch_size, shuffle=False)
+        dataloader_infer = data_infer.create_dataloader(model, shuffle=False)
 
         model.eval()
 
-        outputs = self.run_through_data(logger, model, dataloader_infer, infer_model=True)
+        with torch.no_grad():
+            outputs = self.run_through_data(logger, model, dataloader_infer, infer_model=True)
 
         if len(modalities_provided) == 0 or data_infer.n_modality == len(modalities_provided):
             return DataManager.anndata_from_outputs(model, dataloader_infer.dataset, outputs)
@@ -132,8 +133,8 @@ class CustomizedTask(AlternativelyNamedObject):
 
         self.update_schedules(logger, model, schedule_configs, save_model_path)
 
-        dataloader = data.create_dataloader(model, batch_size, shuffle=True)
-        datalodaer_validation = data_validation.create_dataloader(model, batch_size, shuffle=False)
+        dataloader = data.create_dataloader(model, shuffle=True, batch_size=batch_size)
+        datalodaer_validation = data_validation.create_dataloader(model, shuffle=False, batch_size=batch_size)
 
         model.train()
         for epoch in range(n_epoch):
@@ -151,10 +152,11 @@ class CustomizedTask(AlternativelyNamedObject):
                 else:
                     checkpoint_model_name = None
 
-                self.run_through_data(
-                    logger, model, datalodaer_validation, schedule,
-                    save_best_model=save_best_model, checkpoint_model_name=checkpoint_model_name,
-                )
+                with torch.no_grad():
+                    self.run_through_data(
+                        logger, model, datalodaer_validation, schedule,
+                        save_best_model=save_best_model, checkpoint_model_name=checkpoint_model_name,
+                    )
 
 
     def transfer(
@@ -166,7 +168,7 @@ class CustomizedTask(AlternativelyNamedObject):
 
         self.update_schedules(logger, model, schedule_configs, save_model_path)
 
-        datalodaer_validation = data_validation.create_dataloader(model, batch_size, shuffle=False)
+        datalodaer_validation = data_validation.create_dataloader(model, shuffle=False, batch_size=batch_size)
 
         for epoch in range(n_epoch):
             epoch += 1

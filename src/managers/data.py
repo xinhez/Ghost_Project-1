@@ -17,9 +17,9 @@ from src.managers.technique import DefaultTechnique
 class Dataset(D.Dataset):
     def __init__(self, modalities, batches, labels):
         super().__init__()
-        self.modalities = [torch.Tensor(modality) for modality in modalities]
-        self.batches = torch.LongTensor(batches)
-        self.labels = None if labels is None else torch.LongTensor(labels)
+        self.modalities = [torch.tensor(modality, dtype=torch.float) for modality in modalities]
+        self.batches = torch.tensor(batches, dtype=torch.long)
+        self.labels = None if labels is None else torch.tensor(labels, dtype=torch.long)
 
     
     def __getitem__(self, index):
@@ -123,7 +123,7 @@ class Data(NamedObject):
         return Dataset(self.modalities, batches, labels)
 
 
-    def create_dataloader(self, model, batch_size, shuffle):
+    def create_dataloader(self, model, shuffle, batch_size=512):
         g = torch.Generator()
         g.manual_seed(utils.RANDOM_SEED)
 
@@ -206,7 +206,9 @@ class DataManager(ObjectManager):
         _, cluster_outputs, fused_latents = outputs
         adata = ad.AnnData(fused_latents.cpu().numpy())
         adata.obs['batch'] = model.data_batch_encoder.inverse_transform(dataset.batches.tolist())
-        adata.obs['label'] = model.data_label_encoder.inverse_transform(cluster_outputs.argmax(axis=1).cpu().tolist())
+        adata.obs['predicted_label'] = model.data_label_encoder.inverse_transform(
+            cluster_outputs.argmax(axis=1).cpu().tolist()
+        )
         
         sc.tl.pca(adata)
         sc.pp.neighbors(adata, n_neighbors=30)

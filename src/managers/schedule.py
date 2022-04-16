@@ -83,7 +83,7 @@ class BaseSchedule(AlternativelyNamedObject):
 
             # Set the best head if the losses are based on head.
             if len(accumulated_head_losses) > 0:
-                model.best_head = torch.argmin(torch.Tensor(accumulated_head_losses))
+                model.best_head = torch.argmin(torch.tensor(accumulated_head_losses))
 
         return losses
 

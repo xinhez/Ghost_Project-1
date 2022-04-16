@@ -60,7 +60,6 @@ class UnitedNet:
         save_model_path:      str                   = None,
         save_best_model:      bool                  = False,
         checkpoint:           int                   = 0,
-        device:               str                   = 'cpu',
     ):
         """\
         Fitting the current model on the saved training dataset.
@@ -70,7 +69,6 @@ class UnitedNet:
             Otherwise use the training dataset for evaluation.
         """
         self._check_model_exist()
-        self.set_device(device)
 
         self._check_data_exist()
              
@@ -106,7 +104,6 @@ class UnitedNet:
         save_model_path:          str                   = None,
         save_best_model:          bool                  = False,
         checkpoint:               int                   = 0,
-        device:                   str                   = 'cpu',
     ):
         """\
         Perform ransfer learning on the adatas_transfer dataset. 
@@ -115,7 +112,6 @@ class UnitedNet:
             The setting of adata_infer must match the saved adata.
         """
         self._check_model_exist()
-        self.set_device(device)
 
         self._check_data_exist()
 
@@ -144,9 +140,7 @@ class UnitedNet:
         label_key_evaluation:   str                   = None,
         batch_index_evaluation: int                   = None, 
         batch_key_evaluation:   str                   = None,
-        batch_size:             int                   = 512,
         save_log_path:          str                   = None,
-        device:                 str                   = 'cpu',
     ):
         """\
         Evaluate the current model with the adatas_eval dataset, or the registered data if the former not provided.
@@ -155,7 +149,6 @@ class UnitedNet:
             The setting of adata_eval must match the saved adata.
         """
         self._check_model_exist()
-        self.set_device(device)
 
         data_evaluation = self._format_data_or_retrieve_registered(
             EvaluationData.name, adatas_evaluation, 
@@ -164,24 +157,21 @@ class UnitedNet:
         )
 
         task_manager = TaskManager.get_constructor_by_name(CustomizedTask.name)()
-        return task_manager.evaluate(self.model, data_evaluation, batch_size, save_log_path)
+        return task_manager.evaluate(self.model, data_evaluation, save_log_path)
 
 
     def infer(self,
         adatas_inference:        List[anndata.AnnData] = None, 
         modalities_provided:     List                  = [],
-        modality_sizes:          List[int]             = None,
         batch_index_inference:   int                   = None, 
         batch_key_inference:     str                   = None,
-        batch_size:              int                   = 512,
+        modality_sizes:          List[int]             = None,
         save_log_path:           str                   = None,
-        device:                  str                   = 'cpu',
     ) -> anndata.AnnData:
         """\
         Produce inference result for the adatas_infer dataset, or the registered data if the former not provided. 
         """
         self._check_model_exist()
-        self.set_device(device)
         
         if modality_sizes is None:
             self._check_data_exist()
@@ -192,7 +182,7 @@ class UnitedNet:
         )
 
         task_manager = TaskManager.get_constructor_by_name(CustomizedTask.name)()
-        return task_manager.infer(self.model, data_inference, batch_size, save_log_path, modalities_provided)
+        return task_manager.infer(self.model, data_inference, save_log_path, modalities_provided)
 
 
     def load_model(self, path: str) -> None:
@@ -224,6 +214,7 @@ class UnitedNet:
 
     
     def set_device(self, device: str='cpu'):
+        self._check_model_exist()
         self.model.save_device_in_use(device)
         self.model = self.model.to(device=device)
 

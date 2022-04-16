@@ -51,9 +51,9 @@ def combine_tensor_lists(list0, list1):
     for l0, l1 in zip(list0, list1):
         if isinstance(l0, list) or isinstance(l1, list):
             combined_lists.append(combine_tensor_lists(l0, l1))
-        elif not isinstance(l0, torch.Tensor):
+        elif not torch.is_tensor(l0):
             raise Exception(f"Type {type(l0)} is not supported in combine_tensor_lists.")
-        elif not isinstance(l1, torch.Tensor):
+        elif not torch.is_tensor(l1):
             raise Exception(f"Type {type(l1)} is not supported in combine_tensor_lists.")
         else:
             combined_lists.append(torch.cat([l0, l1], dim=0))

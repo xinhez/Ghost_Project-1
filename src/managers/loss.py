@@ -24,7 +24,8 @@ class LatentMMDLoss(Loss):
     """\
     Adapted from https://github.com/KrishnaswamyLab/SAUCIE/blob/master/model.py
     """
-    def _pairwise_dists(self, x1, x2):
+    @staticmethod
+    def _pairwise_dists(x1, x2):
         """Helper function to calculate pairwise distances between tensors x1 and x2."""
         r1 = torch.sum(x1 * x1, dim=1, keepdim=True)
         r2 = torch.sum(x2 * x2, dim=1, keepdim=True)
@@ -32,9 +33,10 @@ class LatentMMDLoss(Loss):
         return D
 
 
-    def _gaussian_kernel_matrix(self, dist, device):
+    @staticmethod
+    def _gaussian_kernel_matrix(dist, device):
         """Multi-scale RBF kernel."""
-        sigmas = torch.tensor([10, 15, 20, 50],device=device)
+        sigmas = torch.tensor([10, 15, 20, 50], device=device)
 
         beta = 1. / (2. * (torch.unsqueeze(sigmas, 1)))
 
@@ -49,8 +51,9 @@ class LatentMMDLoss(Loss):
         
         for latent in model.latent_outputs:
             e = latent / torch.mean(latent)
-            K = self._pairwise_dists(e, e)
+            K = LatentMMDLoss._pairwise_dists(e, e)
             K = K / torch.max(K)
+            K = LatentMMDLoss._gaussian_kernel_matrix(K, model.device_in_use)
 
             # reference batch
             ref_batch = 0
@@ -140,6 +143,9 @@ class DDC3Loss(Loss):
 class CrossEntropyLoss(Loss):
     name = 'cross_entropy'
     based_on_head = True
+    def __init__(self, config, model):
+        super().__init__(config, model)
+        self.class_weights = torch.tensor(model.config.class_weights, device=model.device_in_use, dtype=torch.float)
     def __call__(self, model):
         total_loss = 0 
         head_losses = []
@@ -147,7 +153,7 @@ class CrossEntropyLoss(Loss):
         for cluster_outputs in model.cluster_outputs:
             loss = F.cross_entropy(
                 cluster_outputs, model.labels, 
-                weight=torch.Tensor(model.config.class_weights).to(device=model.device_in_use),
+                weight=self.class_weights,
             )
 
             loss /= model.n_head
