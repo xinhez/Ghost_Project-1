@@ -1,5 +1,6 @@
 # Ignore storage
 data
+saved_*
 **/.ipynb_checkpoints
 
 # Ignore python generated files

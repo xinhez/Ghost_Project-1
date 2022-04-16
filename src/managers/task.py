@@ -1,7 +1,6 @@
 import torch
 
 from sklearn.metrics import normalized_mutual_info_score,adjusted_rand_score
-from torch.utils.data.sampler import SequentialSampler
 
 import src.utils as utils
 
@@ -15,19 +14,65 @@ class CustomizedTask(AlternativelyNamedObject):
     name = 'customized' 
 
 
-    def update_schedules(self, model, schedule_configs):
+    def update_schedules(self, logger, model, schedule_configs, save_model_path):
         if schedule_configs is not None:
             self.schedules = [
-                ScheduleManager.get_constructor_by_name(config.name)(model, config) 
-                for config in schedule_configs
+                ScheduleManager.get_constructor_by_name(config.name)(
+                    logger, model, config, save_model_path, schedule_order
+                ) 
+                for (schedule_order, config) in enumerate(schedule_configs)
             ]
+
+    
+    def run_through_data(
+            self, logger, model, dataloader, schedule=None, 
+            train_model=False, infer_model=False,
+            save_best_model=False, checkpoint_model_name=None,
+        ):
+        """\
+        Losses can only computed by the schedule.
+        Inference involves moving tensors to CPU and can be slow.
+        """
+        if train_model and schedule is None:
+            raise Exception("Please provide training schedules.")
+        
+        all_outputs = []
+        all_losses  = {}
+
+        for modalities, *batches_and_maybe_labels in dataloader:
+            if len(batches_and_maybe_labels) == 1:
+                batches, labels = *batches_and_maybe_labels, None
+            elif len(batches_and_maybe_labels) == 2:
+                batches, labels = batches_and_maybe_labels
+
+            outputs = model(modalities, batches, labels)
+            
+            if schedule is not None:
+                losses = schedule.step(model, train_model)
+                losses = utils.amplify_value_dictionary_by_sample_size(losses, len(batches))
+                all_losses = utils.sum_value_dictionaries(all_losses, losses)
+                
+            if infer_model:
+                outputs = utils.move_tensor_list_to_cpu(outputs)
+                all_outputs = utils.combine_tensor_lists(all_outputs, outputs)
+
+        if all_losses: 
+            all_losses = utils.average_dictionary_values_by_sample_size(all_losses, len(dataloader.dataset))
+            logger.log_losses(all_losses)
+
+        if save_best_model and schedule.check_and_update_best_loss(all_losses):
+            schedule.save_model(model)
+
+        if checkpoint_model_name is not None:
+            schedule.save_model(model, checkpoint_model_name)
+
+        return all_outputs
 
 
     def evaluate_outputs(self, logger, dataset, outputs):
         labels = dataset.labels        
         translations, predictions, *_ = outputs
 
-        predictions = predictions.detach().cpu()
         accuracy = torch.sum(labels == predictions).data / predictions.shape[0]
 
         labels      = labels.numpy()
@@ -41,41 +86,6 @@ class CustomizedTask(AlternativelyNamedObject):
         logger.log_metrics(metrics)
         return metrics
 
-    
-    def run_through_data(self, logger, model, dataloader, schedule=None, evaluate_outputs=False, save_best_model=False):
-        if evaluate_outputs and not isinstance(dataloader.sampler, SequentialSampler):
-            raise Exception(
-                "Please only evaluate dataset that is not shuffled (use shuffle=False in data.create_dataloader)."
-            )
-        
-        all_outputs = []
-        all_losses  = {}
-
-        for modalities, *batches_and_maybe_labels in dataloader:
-            if len(batches_and_maybe_labels) == 1:
-                batches, labels = *batches_and_maybe_labels, None
-            elif len(batches_and_maybe_labels) == 2:
-                batches, labels = batches_and_maybe_labels
-
-            outputs = model(modalities, batches, labels)
-            all_outputs = utils.combine_tensor_lists(all_outputs, outputs)
-            
-            if schedule is not None:
-                losses = schedule.step(model)
-                losses = utils.amplify_value_dictionary_by_sample_size(losses, len(batches))
-                all_losses = utils.sum_value_dictionaries(all_losses, losses)
-
-        if all_losses: 
-            all_losses = utils.average_dictionary_values_by_sample_size(all_losses, len(dataloader.dataset))
-            logger.log_losses(all_losses)
-
-        # if save_best_model:
-        #     raise Exception("Not Implemented")
-
-        metrics = self.evaluate_outputs(logger, dataloader.dataset, all_outputs) if evaluate_outputs else {}
-
-        return all_outputs, metrics
-
 
     def evaluate(self, model, data_eval, batch_size, save_log_path): 
         logger = Logger(save_log_path)
@@ -85,7 +95,8 @@ class CustomizedTask(AlternativelyNamedObject):
         
         model.eval() 
 
-        _, metrics = self.run_through_data(logger, model, dataloader_eval, evaluate_outputs=True)
+        outputs = self.run_through_data(logger, model, dataloader_eval, infer_model=True)
+        metrics = self.evaluate_outputs(logger, dataloader_eval.dataset, outputs)
 
         return metrics
 
@@ -108,38 +119,54 @@ class CustomizedTask(AlternativelyNamedObject):
         return outputs
 
 
-    def train(self, schedule_configs, model, data, data_validation, batch_size, n_epoch, save_log_path): 
+    def train(
+        self, schedule_configs, model, data, data_validation, batch_size, n_epoch, 
+        save_log_path, save_model_path, save_best_model, checkpoint,
+        ): 
         logger = Logger(save_log_path)
         logger.log_method_start(self.train.__name__, self.name)
 
-        self.update_schedules(model, schedule_configs)
+        self.update_schedules(logger, model, schedule_configs, save_model_path)
 
         dataloader = data.create_dataloader(model, batch_size, shuffle=True)
         datalodaer_validation = data_validation.create_dataloader(model, batch_size, shuffle=False)
 
         model.train()
         for epoch in range(n_epoch):
-            logger.log_epoch_start(epoch+1, n_epoch)
+            epoch += 1
+            logger.log_epoch_start(epoch, n_epoch)
 
             for schedule in self.schedules:
                 logger.log_schedule_start(schedule)
 
-                self.run_through_data(logger, model, dataloader, schedule)
-                self.run_through_data(logger, model, datalodaer_validation, evaluate_outputs=True, save_best_model=True)
+                self.run_through_data(logger, model, dataloader, schedule, train_model=True)
+
+                if checkpoint > 0:
+                    if epoch % checkpoint == 0:
+                        checkpoint_model_name = f'epoch_{epoch}.pt'
+                else:
+                    checkpoint_model_name = None
+
+                self.run_through_data(
+                    logger, model, datalodaer_validation, schedule,
+                    save_best_model=save_best_model, checkpoint_model_name=checkpoint_model_name,
+                )
 
 
     def transfer(
-        self, schedule_configs, model, data, data_transfer, data_validation, batch_size, n_epoch, save_log_path
+        self, schedule_configs, model, data, data_transfer, data_validation, batch_size, n_epoch, 
+        save_log_path, save_model_path, save_best_model, checkpoint,
     ): 
         logger = Logger(save_log_path)
         logger.log_method_start(self.transfer.__name__, self.name)
 
-        self.update_schedules(model, schedule_configs)
+        self.update_schedules(logger, model, schedule_configs, save_model_path)
 
         datalodaer_validation = data_validation.create_dataloader(model, batch_size, shuffle=False)
 
         for epoch in range(n_epoch):
-            logger.log_epoch_start(epoch+1, n_epoch)
+            epoch += 1
+            logger.log_epoch_start(epoch, n_epoch)
             for schedule in self.schedules:
                 logger.log_schedule_start(schedule)
                 raise Exception("Not Implemented!")

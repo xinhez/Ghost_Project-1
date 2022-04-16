@@ -93,6 +93,7 @@ class LossConfig(Config):
 # ==================== Schedule Config Definition ====================
 class ScheduleConfig(Config):
     name:      str
+    best_loss_term: str                     = None
     losses:    none_or_typelist(LossConfig) = None
     optimizer: OptimizerConfig              = OptimizerConfig()
 

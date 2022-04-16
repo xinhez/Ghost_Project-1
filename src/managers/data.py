@@ -1,13 +1,15 @@
 import numpy as np
+import random
 import torch
 import torch.utils.data as D
 
 from scipy.sparse import issparse
 from sklearn.utils import class_weight
 
+import src.utils as utils
+
 from src.managers.base import NamedObject, ObjectManager
 from src.managers.technique import DefaultTechnique
-from src.utils import count_unique
 
 
 class Dataset(D.Dataset):
@@ -61,7 +63,7 @@ class Data(NamedObject):
     
     @property
     def n_batch(self):
-        return count_unique(self.batches)
+        return utils.count_unique(self.batches)
 
 
     @property
@@ -100,7 +102,7 @@ class Data(NamedObject):
             self.class_weights = list(class_weight.compute_class_weight(
                 'balanced', classes=np.unique(self.labels), y=self.labels
             ))
-            self.n_label = count_unique(self.labels)
+            self.n_label = utils.count_unique(self.labels)
 
 
     def validate_batches(self, batch_or_batches):
@@ -120,8 +122,14 @@ class Data(NamedObject):
 
 
     def create_dataloader(self, model, batch_size, shuffle):
+        g = torch.Generator()
+        g.manual_seed(utils.RANDOM_SEED)
+
         dataset = self.create_dataset(model)
-        return D.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+        return D.DataLoader(
+            dataset, batch_size=batch_size, shuffle=shuffle,
+            worker_init_fn=lambda _: utils.set_random_seed(np, random, torch), generator=g
+        )
 
 
 class EvaluationData(Data):
@@ -225,7 +233,7 @@ class DataManager(ObjectManager):
     @staticmethod
     def validate_anndatas_sample_sizes(adatas):
         sample_sizes = [len(adata) for adata in adatas]
-        if count_unique(sample_sizes) > 1:
+        if utils.count_unique(sample_sizes) > 1:
             raise Exception("Please provide equal numbers of samples for all modalities.")
 
     

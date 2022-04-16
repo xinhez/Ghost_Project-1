@@ -1,3 +1,5 @@
+import numpy as np
+import os
 import torch
 
 from src.config import LossConfig
@@ -15,7 +17,9 @@ class BaseSchedule(AlternativelyNamedObject):
     name = 'Schedule'
 
 
-    def __init__(self, model, config):
+    def __init__(self, logger, model, config, save_model_path, order):
+        self.logger = logger
+
         loss_configs = config.losses or self.loss_configs 
         self.losses = [
             LossManager.get_constructor_by_name(loss_config.name)(loss_config) 
@@ -26,10 +30,40 @@ class BaseSchedule(AlternativelyNamedObject):
             config.optimizer, self.name, config.optimizer.modules or self.optimizer_modules
         )
 
+        self.order = order
+        if save_model_path is None:
+            self.save_model_path = None
+        else:
+            self.save_model_path = f'{save_model_path}/Schedule_{self.order}_{self.name}'
+            os.makedirs(self.save_model_path, exist_ok=True)
 
-    def step(self, model):
-        model.optimizers_by_schedule[self.name].zero_grad()
+        self.best_loss_term = config.best_loss_term
+        self.best_loss = np.inf
 
+    
+    def check_and_update_best_loss(self, losses):
+        if self.best_loss_term is None:
+            loss = sum(losses.values())
+        else:
+            loss = losses[self.best_loss_term]
+        if loss < self.best_loss:
+            self.best_loss = loss
+            return True
+        else:
+            return False
+
+    
+    def save_model(self, model, name='best.pt'):
+        if self.save_model_path is None:
+            raise Exception("Please provide models saving path.")
+        fullname = f'{self.save_model_path}/{name}'
+        self.logger.log_save_model(fullname)
+        model.save_model(fullname)
+
+
+    def step(self, model, train_model):
+        if train_model:
+            model.optimizers_by_schedule[self.name].zero_grad()
 
         # Compute all losses
         losses = {}
@@ -39,16 +73,17 @@ class BaseSchedule(AlternativelyNamedObject):
             losses[loss.name], head_losses = loss(model)
             total_loss += losses[loss.name]
 
-            if head_losses is not None:
+            if train_model and head_losses is not None:
                 accumulated_head_losses = sum_value_lists(accumulated_head_losses, head_losses)
 
-        # Step the optimizers
-        total_loss.backward()
-        model.optimizers_by_schedule[self.name].step()
+        if train_model:
+            # Step the optimizers
+            total_loss.backward()
+            model.optimizers_by_schedule[self.name].step()
 
-        # Set the best head if the losses are based on head.
-        if len(accumulated_head_losses) > 0:
-            model.best_head = torch.argmin(torch.Tensor(accumulated_head_losses))
+            # Set the best head if the losses are based on head.
+            if len(accumulated_head_losses) > 0:
+                model.best_head = torch.argmin(torch.Tensor(accumulated_head_losses))
 
         return losses
 

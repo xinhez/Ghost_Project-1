@@ -1,6 +1,5 @@
 import anndata
 import numpy, random, torch
-from regex import D
 
 from typing import List
 
@@ -58,6 +57,9 @@ class UnitedNet:
         batch_size:           int                   = 512,
         schedule_configs:     List[ScheduleConfig]  = None,
         save_log_path:        str                   = None,
+        save_model_path:      str                   = None,
+        save_best_model:      bool                  = False,
+        checkpoint:           int                   = 0,
         device:               str                   = 'cpu',
     ):
         """\
@@ -79,7 +81,10 @@ class UnitedNet:
         )
 
         task_manager = TaskManager.get_constructor_by_name(task)()
-        task_manager.train(schedule_configs, self.model, self.data, data_validation, batch_size, n_epoch, save_log_path)
+        task_manager.train(
+            schedule_configs, self.model, self.data, data_validation, batch_size, n_epoch, 
+            save_log_path, save_model_path, save_best_model, checkpoint
+        )
 
 
     def transfer(self,
@@ -98,6 +103,9 @@ class UnitedNet:
         batch_size:               int                   = 512,
         schedule_configs:         List[ScheduleConfig]  = None,
         save_log_path:            str                   = None,
+        save_model_path:          str                   = None,
+        save_best_model:          bool                  = False,
+        checkpoint:               int                   = 0,
         device:                   str                   = 'cpu',
     ):
         """\
@@ -114,18 +122,19 @@ class UnitedNet:
         data_transfer = DataManager.format_anndatas(
             TransferenceData.name, adatas_transference, 
             batch_index_transference, batch_key_transference, 
-            label_index_transference, label_key_transference
+            label_index_transference, label_key_transference,
         )
              
         data_validation = self._format_data_or_retrieve_registered(
             ValidationData.name, adatas_validation, 
             batch_index_validation, batch_key_validation, 
-            label_index_validation, label_key_validation
+            label_index_validation, label_key_validation,
         )
 
         task_manager = TaskManager.get_constructor_by_name(task)()
         task_manager.transfer(
-            schedule_configs, self.model, self.data, data_transfer, data_validation, batch_size, n_epoch, save_log_path
+            schedule_configs, self.model, self.data, data_transfer, data_validation, batch_size, n_epoch, 
+            save_log_path, save_model_path, save_best_model, checkpoint,
         )
 
 

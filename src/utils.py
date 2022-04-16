@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+RANDOM_SEED = 3407
 
 
 def amplify_value_dictionary_by_sample_size(dictionary, sample_size):
@@ -59,14 +60,24 @@ def combine_tensor_lists(list0, list1):
     return combined_lists
 
 
-def set_random_seed(n, r, t, seed=3407):
+def move_tensor_list_to_cpu(tensors):
+    cpu_tensors = []
+    for tensor in tensors:
+        if isinstance(tensor, list):
+            cpu_tensors.append(move_tensor_list_to_cpu(tensor))
+        else:
+            cpu_tensors.append(tensor.detach().cpu())
+    return cpu_tensors
+
+
+def set_random_seed(n, r, t, seed=RANDOM_SEED):
+    t.manual_seed(seed)
     t.cuda.manual_seed(seed)
     t.cuda.manual_seed_all(seed)
     t.backends.cudnn.benchmark = False
     t.backends.cudnn.deterministic = True
     n.random.seed(seed)
     r.seed(seed)
-    return t.manual_seed(seed)
 
 
 def sum_value_dictionaries(dictionary0, dictionary1):

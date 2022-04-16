@@ -1,15 +1,13 @@
 class Logger:
     tab = '    '
-    def __init__(self, save_to_path=None):
-        self.save_to_path = save_to_path
-        if save_to_path is not None:
-            open(save_to_path, 'w').close()
+    def __init__(self, save_log_path=None):
+        self.save_log_path = save_log_path
 
 
     def print_or_save(self, message):
         print(message)
-        if self.save_to_path is not None:
-            file = open(self.save_to_path, "a") 
+        if self.save_log_path is not None:
+            file = open(self.save_log_path, "a") 
             file.write(f"{message}\n")
             file.close()
 
@@ -30,9 +28,14 @@ class Logger:
         message = f"\n{self.tab}(Epoch {epoch} / {n_epoch})"
         self.print_or_save(message)
 
+    
+    def log_save_model(self, name):
+        message = f"{self.tab}{self.tab}{self.tab}Saving model to {name}"
+        self.print_or_save(message)
+
 
     def log_schedule_start(self, schedule):
-        message = f"{self.tab}========== Schedule: {schedule.name} =========="
+        message = f"{self.tab}========== Schedule {schedule.order}: {schedule.name} =========="
         self.print_or_save(message)
 
     
