@@ -21,13 +21,64 @@ class Loss(NamedObject):
 
 class LatentMMDLoss(Loss):
     name = 'latent_mmd'
+    """\
+    Adapted from https://github.com/KrishnaswamyLab/SAUCIE/blob/master/model.py
+    """
+    def _pairwise_dists(self, x1, x2):
+        """Helper function to calculate pairwise distances between tensors x1 and x2."""
+        r1 = torch.sum(x1 * x1, dim=1, keepdim=True)
+        r2 = torch.sum(x2 * x2, dim=1, keepdim=True)
+        D = r1 - 2 * torch.matmul(x1, x2.t()) + r2.t()
+        return D
+
+
+    def _gaussian_kernel_matrix(self, dist, device):
+        """Multi-scale RBF kernel."""
+        sigmas = torch.tensor([10, 15, 20, 50],device=device)
+
+        beta = 1. / (2. * (torch.unsqueeze(sigmas, 1)))
+
+        s = torch.matmul(beta, torch.reshape(dist, (1, -1)))
+
+        return torch.reshape(torch.sum(torch.exp(-s), dim=0), dist.shape) / len(sigmas)
+
+
     def __call__(self, model):
-        raise Exception("Not Implemented!")
-        return loss, None
+        loss = 0
+        batches=model.batches
+        
+        for latent in model.latent_outputs:
+            e = latent / torch.mean(latent)
+            K = self._pairwise_dists(e, e)
+            K = K / torch.max(K)
+
+            # reference batch
+            ref_batch = 0
+            ref_indices = torch.where(batches == ref_batch)[0]
+            n_ref = ref_indices.shape[0]
+            ref_var = torch.sum(K[ref_indices].t()[ref_indices]) / (n_ref ** 2)
+
+            # nonreference
+            for nonref_batch in batches.unique():
+                if nonref_batch != ref_batch:
+                    nonref_indices = torch.where(batches == nonref_batch)[0]
+                    n_nonref = nonref_indices.shape[0]
+            
+                    nonref_var = torch.sum(K[nonref_indices].t()[nonref_indices]) / (n_nonref ** 2)
+                    covar = torch.sum(K[ref_indices].t()[nonref_indices]) / n_ref / n_nonref
+
+                    loss += torch.abs(ref_var + nonref_var - 2 * covar)
+
+        loss /= model.n_modality
+        loss *= self.weight
+        return loss
 
 
 class ReconstructionMMDLoss(Loss):
     name = 'reconstruction_mmd'
+    """\
+    Adapted from https://github.com/KrishnaswamyLab/SAUCIE/blob/master/model.py
+    """
     def __call__(self, model):
         eps = 1e-5
         loss = 0
