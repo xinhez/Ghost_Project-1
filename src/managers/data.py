@@ -1,5 +1,7 @@
+import anndata as ad
 import numpy as np
 import random
+import scanpy as sc
 import torch
 import torch.utils.data as D
 
@@ -197,6 +199,19 @@ class DataManager(ObjectManager):
     label = 'label'
     batch = 'batch'
     keys  = [label, batch]
+
+
+    @staticmethod
+    def anndata_from_outputs(model, dataset, outputs):
+        _, cluster_outputs, fused_latents = outputs
+        adata = ad.AnnData(fused_latents.cpu().numpy())
+        adata.obs['batch'] = model.data_batch_encoder.inverse_transform(dataset.batches.tolist())
+        adata.obs['label'] = model.data_label_encoder.inverse_transform(cluster_outputs.argmax(axis=1).cpu().tolist())
+        
+        sc.tl.pca(adata)
+        sc.pp.neighbors(adata, n_neighbors=30)
+        sc.tl.umap(adata)
+        return adata
 
 
     @staticmethod

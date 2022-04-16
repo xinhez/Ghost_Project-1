@@ -170,11 +170,11 @@ class UnitedNet:
     def infer(self,
         adatas_inference:        List[anndata.AnnData] = None, 
         modalities_provided:     List                  = [],
+        modality_sizes:          List[int]             = None,
         batch_index_inference:   int                   = None, 
         batch_key_inference:     str                   = None,
         batch_size:              int                   = 512,
         save_log_path:           str                   = None,
-        modality_sizes:          List[int]             = None,
         device:                  str                   = 'cpu',
     ):
         """\

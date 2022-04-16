@@ -1,6 +1,7 @@
 import torch
 
 from sklearn.metrics import normalized_mutual_info_score,adjusted_rand_score
+from src.managers.data import DataManager
 
 import src.utils as utils
 
@@ -112,10 +113,10 @@ class CustomizedTask(AlternativelyNamedObject):
 
         model.eval()
 
-        outputs, _ = self.run_through_data(logger, model, dataloader_infer)
+        outputs = self.run_through_data(logger, model, dataloader_infer, infer_model=True)
 
         if len(modalities_provided) == 0 or data_infer.n_modality == len(modalities_provided):
-            return outputs
+            return DataManager.anndata_from_outputs(model, dataloader_infer.dataset, outputs)
 
         raise Exception("Re-infer not implemented!")
         raise Exception("AnnData Processing.")
