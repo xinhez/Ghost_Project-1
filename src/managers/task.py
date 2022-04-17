@@ -49,12 +49,13 @@ class BaseTask(AlternativelyNamedObject):
             elif len(batches_and_maybe_labels) == 2:
                 batches, labels = batches_and_maybe_labels
 
-            outputs = model(modalities, batches, labels)
-            
             if schedule is not None:
+                outputs = model(modalities, batches, labels, schedule.cluster_requested, schedule.discriminator_requested)
                 losses = schedule.step(model, train_model)
                 losses = utils.amplify_value_dictionary_by_sample_size(losses, len(batches))
                 all_losses = utils.sum_value_dictionaries(all_losses, losses)
+            else:
+                outputs = model(modalities, batches, labels)
                 
             if infer_model:
                 outputs = utils.move_tensor_list_to_cpu(outputs)

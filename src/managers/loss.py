@@ -7,6 +7,9 @@ from src.managers.base import NamedObject, ObjectManager
 class Loss(NamedObject):
     name = 'Loss'
     based_on_head = False
+    based_on_discriminator = False
+
+    
     def __init__(self, config, _):
         self.weight = config.weight or 1
 
@@ -168,10 +171,10 @@ class CrossEntropyLoss(Loss):
 
 
 class ContrastiveLoss(Loss):
+    name = 'contrastive'
     """\
     Adapted From: https://github.com/DanielTrosten/mvc/blob/main/src/lib/loss.py
     """
-    name = 'contrastive'
     based_on_head = True
     def __init__(self, config, model):
         super().__init__(config, model)
@@ -242,6 +245,7 @@ class ContrastiveLoss(Loss):
 
 class DiscriminatorLoss(Loss):
     name = 'discriminator'
+    based_on_discriminator = True
     def __call__(self, model):
         raise Exception("Not Implemented!")
         return loss, None
@@ -249,6 +253,7 @@ class DiscriminatorLoss(Loss):
 
 class GeneratorLoss(Loss):
     name = 'generator'
+    based_on_discriminator = True
     def __call__(self, model):
         raise Exception("Not Implemented!")
         return loss, None

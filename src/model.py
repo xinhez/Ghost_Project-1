@@ -126,7 +126,7 @@ class Model(nn.Module):
         self.device_in_use = device 
 
 
-    def forward(self, modalities, batches, labels):
+    def forward(self, modalities, batches, labels, cluster_requested=True, discriminator_requested=False):
         self.modalities = [modality.to(device=self.device_in_use) for modality in modalities]
         self.batches    = batches.to(device=self.device_in_use)
         self.labels     = labels.to(device=self.device_in_use) if labels is not None else None
@@ -141,23 +141,28 @@ class Model(nn.Module):
             ] for decoder in self.decoders
         ]
 
-        self.fused_latents = [
-            fuser(self.latents) for fuser in self.fusers
-        ]
+        if discriminator_requested:
+            self.discriminator_real_outputs = [
+                discriminator(modality) for (discriminator, modality) in zip(self.discriminators, self.modalities)
+            ]
 
-        self.cluster_outputs = [
-            cluster(fused_latent) for (cluster, fused_latent) in zip(self.clusters, self.fused_latents)
-        ]
+            self.discriminator_fake_outputs = [
+                discriminator(self.translations[i][i]) for i, discriminator in enumerate(self.discriminators)
+            ]
 
-        self.discriminator_real_outputs = [
-            discriminator(modality) for (discriminator, modality) in zip(self.discriminators, self.modalities)
-        ]
+        if cluster_requested:
+            self.fused_latents = [
+                fuser(self.latents) for fuser in self.fusers
+            ]
 
-        self.discriminator_fake_outputs = [
-            discriminator(self.translations[i][i]) for i, discriminator in enumerate(self.discriminators)
-        ]
-        
-        return self.translations, self.cluster_outputs[self.best_head], self.fused_latents[self.best_head]
+            self.cluster_outputs = [
+                cluster(fused_latent) for (cluster, fused_latent) in zip(self.clusters, self.fused_latents)
+            ]
+            
+            return self.translations, self.cluster_outputs[self.best_head], self.fused_latents[self.best_head]
+
+        else:
+            return self.translations, None, None
 
 
     def save_model(self, path):

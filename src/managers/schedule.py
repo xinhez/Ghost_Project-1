@@ -43,6 +43,9 @@ class BaseSchedule(AlternativelyNamedObject):
             self.model_path = f'{model_path}/{task}_{method}_{self.order}_{self.name}'
             os.makedirs(self.model_path, exist_ok=True)
 
+        self.cluster_requested       = any([loss.based_on_head          for loss in self.losses])
+        self.discriminator_requested = any([loss.based_on_discriminator for loss in self.losses])
+
         self.best_loss_term = config.best_loss_term
         self.best_loss = np.inf
 
@@ -120,8 +123,7 @@ class ClassificationSchedule(BaseSchedule):
 class ClassificationFinetuneSchedule(BaseSchedule):
     name = 'classification_finetune'
     loss_configs = [
-        LossConfig(name=CrossEntropyLoss.name), LossConfig(name=ReconstructionLoss.name), 
-        LossConfig(name=ContrastiveLoss.name),
+        LossConfig(name=CrossEntropyLoss.name),
     ]
     optimizer_modules = [
         ModuleNames.encoders, ModuleNames.fusers, ModuleNames.clusters
@@ -167,9 +169,7 @@ class TranslationSchedule(BaseSchedule):
 class TranslationFinetuneSchedule(BaseSchedule):
     name = 'translation_finetune'
     loss_configs = [
-        LossConfig(name=ContrastiveLoss.name), 
         LossConfig(name=ReconstructionLoss.name), LossConfig(name=TranslationLoss.name), 
-        # LossConfig(name=DiscriminatorLoss.name),  LossConfig(name=GeneratorLoss.name),
     ]
     optimizer_modules = [
         ModuleNames.encoders, ModuleNames.decoders, ModuleNames.discriminators
