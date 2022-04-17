@@ -27,7 +27,7 @@ class CustomizedTask(AlternativelyNamedObject):
 
     
     def run_through_data(
-            self, logger, model, dataloader, schedule=None, 
+            self, logger, model, dataloader, epoch=None, schedule=None, 
             train_model=False, infer_model=False,
             save_best_model=False, checkpoint_model_name=None,
         ):
@@ -61,6 +61,8 @@ class CustomizedTask(AlternativelyNamedObject):
         if all_losses: 
             all_losses = utils.average_dictionary_values_by_sample_size(all_losses, len(dataloader.dataset))
             logger.log_losses(all_losses)
+            if epoch is not None:
+                schedule.log_losses(all_losses, epoch)
 
         if save_best_model and schedule.check_and_update_best_loss(all_losses):
             schedule.save_model(model)
@@ -139,7 +141,7 @@ class CustomizedTask(AlternativelyNamedObject):
             for schedule in self.schedules:
                 logger.log_schedule_start(schedule)
 
-                self.run_through_data(logger, model, dataloader, schedule, train_model=True)
+                self.run_through_data(logger, model, dataloader, epoch, schedule, train_model=True)
 
                 if checkpoint > 0:
                     if epoch % checkpoint == 0:
@@ -149,9 +151,13 @@ class CustomizedTask(AlternativelyNamedObject):
 
                 with torch.no_grad():
                     self.run_through_data(
-                        logger, model, datalodaer_validation, schedule,
+                        logger, model, datalodaer_validation, schedule=schedule,
                         save_best_model=save_best_model, checkpoint_model_name=checkpoint_model_name,
                     )
+                
+                schedule.writer.flush()
+
+        self.close_writers()
 
 
     def transfer(
@@ -174,9 +180,11 @@ class CustomizedTask(AlternativelyNamedObject):
             for schedule in self.schedules:
                 logger.log_schedule_start(schedule)
                 if isinstance(schedule, ClassificationSchedule):
-                    self.run_through_data(logger, model, dataloader, schedule, train_model=True)
+                    self.run_through_data(logger, model, dataloader, epoch, schedule, train_model=True)
                 else:
-                    self.run_through_data(logger, model, dataloader_train_and_transfer, schedule, train_model=True)
+                    self.run_through_data(
+                        logger, model, dataloader_train_and_transfer, epoch, schedule, train_model=True
+                    )
 
                 if checkpoint > 0:
                     if epoch % checkpoint == 0:
@@ -186,9 +194,18 @@ class CustomizedTask(AlternativelyNamedObject):
 
                 with torch.no_grad():
                     self.run_through_data(
-                        logger, model, datalodaer_validation, schedule,
+                        logger, model, datalodaer_validation, schedule=schedule,
                         save_best_model=save_best_model, checkpoint_model_name=checkpoint_model_name,
                     )
+                
+                schedule.writer.flush()
+        
+        self.close_writers()
+
+
+    def close_writers(self):
+        for schedule in self.schedules:
+            schedule.writer.close()
 
 
 class CrossModelPredictionTask(CustomizedTask):

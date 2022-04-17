@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import tensorflow as tf
 import torch
 
 from src.config import LossConfig
@@ -19,6 +20,7 @@ class CustomizedSchedule(AlternativelyNamedObject):
 
     def __init__(self, logger, model, config, save_model_path, task, method, order):
         self.logger = logger
+        self.writer = tf.summary.create_file_writer('saved_runs')
 
         loss_configs = config.losses or self.loss_configs 
         self.losses = [
@@ -51,6 +53,12 @@ class CustomizedSchedule(AlternativelyNamedObject):
             return True
         else:
             return False
+
+    
+    def log_losses(self, losses, epoch):
+        with self.writer.as_default():
+            for term in losses:
+                tf.summary.scalar(f'{self.save_model_path}/{term}', losses[term].detach().cpu().numpy(), step=epoch)
 
     
     def save_model(self, model, name='best.pt'):
