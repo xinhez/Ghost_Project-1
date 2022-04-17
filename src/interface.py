@@ -181,7 +181,7 @@ class UnitedNet:
         )
 
         task_manager = TaskManager.get_constructor_by_name(CustomizedTask.name)()
-        return task_manager.infer(self.model, data_inference, self.save_log_path, modalities_provided)
+        return task_manager.infer(self.model, data_inference, self.logger, modalities_provided)
 
 
     def load_model(self, path: str) -> None:
