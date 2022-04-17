@@ -123,15 +123,25 @@ class Data(NamedObject):
         return Dataset(self.modalities, batches, labels)
 
 
-    def create_dataloader(self, model, shuffle, batch_size=512):
+    @staticmethod
+    def create_dataloader_from_dataset(dataset, shuffle, batch_size):
         g = torch.Generator()
         g.manual_seed(utils.RANDOM_SEED)
 
-        dataset = self.create_dataset(model)
         return D.DataLoader(
             dataset, batch_size=batch_size, shuffle=shuffle,
             worker_init_fn=lambda _: utils.set_random_seed(np, random, torch), generator=g
         )
+
+
+    def create_dataloader(self, model, shuffle, batch_size=512):
+        dataset = self.create_dataset(model)
+        return Data.create_dataloader_from_dataset(dataset, shuffle, batch_size)
+        
+
+    def create_joint_dataloader(self, data, model, shuffle, batch_size=512):
+        dataset = D.ConcatDataset([self.create_dataset(model), data.create_dataset(model)])
+        return Data.create_dataloader_from_dataset(dataset, shuffle, batch_size)
 
 
 class EvaluationData(Data):

@@ -49,7 +49,7 @@ class LatentMMDLoss(Loss):
         loss = 0
         batches=model.batches
         
-        for latent in model.latent_outputs:
+        for latent in model.latents:
             e = latent / torch.mean(latent)
             K = LatentMMDLoss._pairwise_dists(e, e)
             K = K / torch.max(K)
@@ -74,7 +74,7 @@ class LatentMMDLoss(Loss):
 
         loss /= model.n_modality
         loss *= self.weight
-        return loss
+        return loss, None
 
 
 class ReconstructionMMDLoss(Loss):

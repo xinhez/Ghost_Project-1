@@ -9,17 +9,18 @@ from src.config import ScheduleConfig
 from src.managers.base import AlternativelyNamedObject, ObjectManager
 from src.managers.schedule import ScheduleManager
 from src.managers.schedule import ClassificationSchedule, ClusteringSchedule, TranslationSchedule
+from src.managers.schedule import LatentBatchAlignmentSchedule, ReconstructionBatchAlignmentSchedule
 
 
 class CustomizedTask(AlternativelyNamedObject):
     name = 'customized' 
 
 
-    def update_schedules(self, logger, model, schedule_configs, save_model_path):
+    def update_schedules(self, logger, model, schedule_configs, save_model_path, method):
         if schedule_configs is not None:
             self.schedules = [
                 ScheduleManager.get_constructor_by_name(config.name)(
-                    logger, model, config, save_model_path, schedule_order
+                    logger, model, config, save_model_path, self.get_short_name(), method, schedule_order
                 ) 
                 for (schedule_order, config) in enumerate(schedule_configs)
             ]
@@ -117,8 +118,6 @@ class CustomizedTask(AlternativelyNamedObject):
             return DataManager.anndata_from_outputs(model, dataloader_infer.dataset, outputs)
 
         raise Exception("Re-infer not implemented!")
-        raise Exception("AnnData Processing.")
-        return outputs
 
 
     def train(
@@ -127,7 +126,7 @@ class CustomizedTask(AlternativelyNamedObject):
         ): 
         logger.log_method_start(self.train.__name__, self.name)
 
-        self.update_schedules(logger, model, schedule_configs, save_model_path)
+        self.update_schedules(logger, model, schedule_configs, save_model_path, self.train.__name__)
 
         dataloader = data.create_dataloader(model, shuffle=True, batch_size=batch_size)
         datalodaer_validation = data_validation.create_dataloader(model, shuffle=False, batch_size=batch_size)
@@ -161,8 +160,12 @@ class CustomizedTask(AlternativelyNamedObject):
     ): 
         logger.log_method_start(self.transfer.__name__, self.name)
 
-        self.update_schedules(logger, model, schedule_configs, save_model_path)
+        self.update_schedules(logger, model, schedule_configs, save_model_path, self.transfer.__name__)
 
+        dataloader = data.create_dataloader(model, shuffle=True, batch_size=batch_size)
+        dataloader_train_and_transfer = data.create_joint_dataloader(
+            data_transfer, model, shuffle=True, batch_size=batch_size
+        )
         datalodaer_validation = data_validation.create_dataloader(model, shuffle=False, batch_size=batch_size)
 
         for epoch in range(n_epoch):
@@ -170,10 +173,22 @@ class CustomizedTask(AlternativelyNamedObject):
             logger.log_epoch_start(epoch, n_epoch)
             for schedule in self.schedules:
                 logger.log_schedule_start(schedule)
-                raise Exception("Not Implemented!")
+                if isinstance(schedule, ClassificationSchedule):
+                    self.run_through_data(logger, model, dataloader, schedule, train_model=True)
+                else:
+                    self.run_through_data(logger, model, dataloader_train_and_transfer, schedule, train_model=True)
 
-                self.run_through_data(logger, model, dataloader, schedule)
-                self.run_through_data(logger, model, datalodaer_validation, evaluate_outputs=True)
+                if checkpoint > 0:
+                    if epoch % checkpoint == 0:
+                        checkpoint_model_name = f'epoch_{epoch}.pt'
+                else:
+                    checkpoint_model_name = None
+
+                with torch.no_grad():
+                    self.run_through_data(
+                        logger, model, datalodaer_validation, schedule,
+                        save_best_model=save_best_model, checkpoint_model_name=checkpoint_model_name,
+                    )
 
 
 class CrossModelPredictionTask(CustomizedTask):
@@ -186,6 +201,16 @@ class CrossModelPredictionTask(CustomizedTask):
         super().train(schedule_configs, *args)
 
 
+    def transfer(self, _, *args): 
+        schedule_configs = [
+            ScheduleConfig(name=LatentBatchAlignmentSchedule.name), 
+            ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
+            ScheduleConfig(name=ClassificationSchedule.name),
+            ScheduleConfig(name=TranslationSchedule.name),
+        ]
+        super().transfer(schedule_configs, *args)
+
+
 class SupervisedGroupIdentificationTask(CustomizedTask):
     name = 'supervised_group_identification'
     def train(self, _, *args): 
@@ -196,6 +221,16 @@ class SupervisedGroupIdentificationTask(CustomizedTask):
         super().train(schedule_configs, *args)
 
 
+    def transfer(self, _, *args): 
+        schedule_configs = [
+            ScheduleConfig(name=LatentBatchAlignmentSchedule.name), 
+            ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
+            ScheduleConfig(name=TranslationSchedule.name),
+            ScheduleConfig(name=ClassificationSchedule.name),
+        ]
+        super().transfer(schedule_configs, *args)
+
+
 class UnsupervisedGroupIdentificationTask(CustomizedTask):
     name = 'unsupervised_group_identification'
     def train(self, _, *args): 
@@ -204,6 +239,16 @@ class UnsupervisedGroupIdentificationTask(CustomizedTask):
             ScheduleConfig(name=ClusteringSchedule.name),
         ]
         super().train(schedule_configs, *args)
+
+
+    def transfer(self, _, *args): 
+        schedule_configs = [
+            ScheduleConfig(name=LatentBatchAlignmentSchedule.name), 
+            ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
+            ScheduleConfig(name=TranslationSchedule.name),
+            ScheduleConfig(name=ClusteringSchedule.name),
+        ]
+        super().transfer(schedule_configs, *args)
 
 
 class TaskManager(ObjectManager):

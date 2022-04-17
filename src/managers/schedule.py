@@ -13,11 +13,11 @@ from src.managers.loss import ContrastiveLoss, DiscriminatorLoss, GeneratorLoss,
 from src.utils import sum_value_lists
 
 
-class BaseSchedule(AlternativelyNamedObject):
-    name = 'Schedule'
+class CustomizedSchedule(AlternativelyNamedObject):
+    name = 'customized'
 
 
-    def __init__(self, logger, model, config, save_model_path, order):
+    def __init__(self, logger, model, config, save_model_path, task, method, order):
         self.logger = logger
 
         loss_configs = config.losses or self.loss_configs 
@@ -34,7 +34,7 @@ class BaseSchedule(AlternativelyNamedObject):
         if save_model_path is None:
             self.save_model_path = None
         else:
-            self.save_model_path = f'{save_model_path}/Schedule_{self.order}_{self.name}'
+            self.save_model_path = f'{save_model_path}/{task}_{method}_{self.order}_{self.name}'
             os.makedirs(self.save_model_path, exist_ok=True)
 
         self.best_loss_term = config.best_loss_term
@@ -88,7 +88,7 @@ class BaseSchedule(AlternativelyNamedObject):
         return losses
 
 
-class ClassificationSchedule(BaseSchedule):
+class ClassificationSchedule(CustomizedSchedule):
     name = 'classification'
     loss_configs = [
         LossConfig(name=CrossEntropyLoss.name), LossConfig(name=ReconstructionLoss.name), 
@@ -99,7 +99,7 @@ class ClassificationSchedule(BaseSchedule):
     ]
 
 
-class ClusteringSchedule(BaseSchedule):
+class ClusteringSchedule(CustomizedSchedule):
     name = 'clustering'
     loss_configs = [
         LossConfig(name=SelfEntropyLoss.name), 
@@ -111,7 +111,7 @@ class ClusteringSchedule(BaseSchedule):
     ]
 
 
-class LatentBatchAlignmentSchedule(BaseSchedule):
+class LatentBatchAlignmentSchedule(CustomizedSchedule):
     name = 'latent_batch_alignment'
     loss_configs = [
         LossConfig(name=LatentMMDLoss.name)
@@ -121,7 +121,7 @@ class LatentBatchAlignmentSchedule(BaseSchedule):
     ]
 
 
-class TranslationSchedule(BaseSchedule):
+class TranslationSchedule(CustomizedSchedule):
     name = 'translation'
     loss_configs = [
         LossConfig(name=ContrastiveLoss.name), 
@@ -133,12 +133,12 @@ class TranslationSchedule(BaseSchedule):
     ]
 
 
-class ReconstructionBatchAlignmentSchedule(TranslationSchedule):
+class ReconstructionBatchAlignmentSchedule(CustomizedSchedule):
     name = 'reconstruction_batch_alignment'
     loss_configs = [
         LossConfig(name=ReconstructionMMDLoss.name)
     ]
-    optimizers = [
+    optimizer_modules = [
         ModuleNames.encoders, ModuleNames.decoders, ModuleNames.discriminators
     ]
 
@@ -151,6 +151,7 @@ class ScheduleManager(ObjectManager):
     """
     name = 'schedules'
     constructors = [
+        CustomizedSchedule,
         ClassificationSchedule, ClusteringSchedule, TranslationSchedule,
         LatentBatchAlignmentSchedule, ReconstructionBatchAlignmentSchedule, 
     ]
