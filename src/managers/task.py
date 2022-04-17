@@ -129,7 +129,7 @@ class CustomizedTask(AlternativelyNamedObject):
         self.update_schedules(logger, model, schedule_configs, save_model_path, self.train.__name__)
 
         dataloader = data.create_dataloader(model, shuffle=True, batch_size=batch_size)
-        datalodaer_validation = data_validation.create_dataloader(model, shuffle=False, batch_size=batch_size)
+        datalodaer_validation = data_validation.create_dataloader(model, shuffle=True, batch_size=batch_size)
 
         model.train()
         for epoch in range(n_epoch):
@@ -166,7 +166,7 @@ class CustomizedTask(AlternativelyNamedObject):
         dataloader_train_and_transfer = data.create_joint_dataloader(
             data_transfer, model, shuffle=True, batch_size=batch_size
         )
-        datalodaer_validation = data_validation.create_dataloader(model, shuffle=False, batch_size=batch_size)
+        datalodaer_validation = data_validation.create_dataloader(model, shuffle=True, batch_size=batch_size)
 
         for epoch in range(n_epoch):
             epoch += 1
