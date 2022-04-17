@@ -4,6 +4,7 @@ import numpy, random, torch
 from typing import List
 
 from src.config import ModelConfig, ScheduleConfig
+from src.logger import Logger
 from src.model import create_model_from_data, load_model_from_path, Model
 from src.managers.data import Data, DataManager
 from src.managers.data import EvaluationData, InferenceData, TrainingData, TransferenceData, ValidationData
@@ -18,6 +19,11 @@ class UnitedNet:
     """\
     API Interface
     """
+    def __init__(self, save_model_path='saved_models', save_log_path='saved_log'):
+        self.set_save_model_path(save_model_path)
+        self.set_save_log_path(save_log_path)
+
+
     def register_anndatas(self, 
         adatas: List[anndata.AnnData], 
         label_index: int,
@@ -56,8 +62,6 @@ class UnitedNet:
         n_epoch:              int                   = 1,
         batch_size:           int                   = 512,
         schedule_configs:     List[ScheduleConfig]  = None,
-        save_log_path:        str                   = None,
-        save_model_path:      str                   = None,
         save_best_model:      bool                  = False,
         checkpoint:           int                   = 0,
     ):
@@ -81,7 +85,7 @@ class UnitedNet:
         task_manager = TaskManager.get_constructor_by_name(task)()
         task_manager.train(
             schedule_configs, self.model, self.data, data_validation, batch_size, n_epoch, 
-            save_log_path, save_model_path, save_best_model, checkpoint
+            self.logger, self.save_model_path, save_best_model, checkpoint,
         )
 
 
@@ -100,8 +104,6 @@ class UnitedNet:
         n_epoch:                  int                   = 1,
         batch_size:               int                   = 512,
         schedule_configs:         List[ScheduleConfig]  = None,
-        save_log_path:            str                   = None,
-        save_model_path:          str                   = None,
         save_best_model:          bool                  = False,
         checkpoint:               int                   = 0,
     ):
@@ -112,7 +114,6 @@ class UnitedNet:
             The setting of adata_infer must match the saved adata.
         """
         self._check_model_exist()
-
         self._check_data_exist()
 
         data_transfer = DataManager.format_anndatas(
@@ -130,7 +131,7 @@ class UnitedNet:
         task_manager = TaskManager.get_constructor_by_name(task)()
         task_manager.transfer(
             schedule_configs, self.model, self.data, data_transfer, data_validation, batch_size, n_epoch, 
-            save_log_path, save_model_path, save_best_model, checkpoint,
+            self.logger, self.save_model_path, save_best_model, checkpoint,
         )
 
 
@@ -139,8 +140,7 @@ class UnitedNet:
         label_index_evaluation: int                   = None, 
         label_key_evaluation:   str                   = None,
         batch_index_evaluation: int                   = None, 
-        batch_key_evaluation:   str                   = None,
-        save_log_path:          str                   = None,
+        batch_key_evaluation:   str                   = None,\
     ):
         """\
         Evaluate the current model with the adatas_eval dataset, or the registered data if the former not provided.
@@ -157,7 +157,7 @@ class UnitedNet:
         )
 
         task_manager = TaskManager.get_constructor_by_name(CustomizedTask.name)()
-        return task_manager.evaluate(self.model, data_evaluation, save_log_path)
+        return task_manager.evaluate(self.model, data_evaluation, self.logger)
 
 
     def infer(self,
@@ -166,7 +166,6 @@ class UnitedNet:
         batch_index_inference:   int                   = None, 
         batch_key_inference:     str                   = None,
         modality_sizes:          List[int]             = None,
-        save_log_path:           str                   = None,
     ) -> anndata.AnnData:
         """\
         Produce inference result for the adatas_infer dataset, or the registered data if the former not provided. 
@@ -182,7 +181,7 @@ class UnitedNet:
         )
 
         task_manager = TaskManager.get_constructor_by_name(CustomizedTask.name)()
-        return task_manager.infer(self.model, data_inference, save_log_path, modalities_provided)
+        return task_manager.infer(self.model, data_inference, self.save_log_path, modalities_provided)
 
 
     def load_model(self, path: str) -> None:
@@ -217,6 +216,14 @@ class UnitedNet:
         self._check_model_exist()
         self.model.save_device_in_use(device)
         self.model = self.model.to(device=device)
+
+
+    def set_save_model_path(self, save_model_path):
+        self.save_model_path = save_model_path
+
+    
+    def set_save_log_path(self, save_log_path):
+        self.logger = Logger(save_log_path)
 
 
     def _get_data(self):

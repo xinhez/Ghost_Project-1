@@ -6,7 +6,6 @@ from src.managers.data import DataManager
 import src.utils as utils
 
 from src.config import ScheduleConfig
-from src.logger import Logger
 from src.managers.base import AlternativelyNamedObject, ObjectManager
 from src.managers.schedule import ScheduleManager
 from src.managers.schedule import ClassificationSchedule, ClusteringSchedule, TranslationSchedule
@@ -91,8 +90,7 @@ class CustomizedTask(AlternativelyNamedObject):
         return metrics
 
 
-    def evaluate(self, model, data_eval, save_log_path): 
-        logger = Logger(save_log_path)
+    def evaluate(self, model, data_eval, logger): 
         logger.log_method_start(self.evaluate.__name__)
         
         dataloader_eval = data_eval.create_dataloader(model, shuffle=False)
@@ -105,8 +103,7 @@ class CustomizedTask(AlternativelyNamedObject):
         return metrics
 
 
-    def infer(self, model, data_infer, save_log_path, modalities_provided): 
-        logger = Logger(save_log_path)
+    def infer(self, model, data_infer, logger, modalities_provided): 
         logger.log_method_start(self.infer.__name__)
 
         dataloader_infer = data_infer.create_dataloader(model, shuffle=False)
@@ -126,9 +123,8 @@ class CustomizedTask(AlternativelyNamedObject):
 
     def train(
         self, schedule_configs, model, data, data_validation, batch_size, n_epoch, 
-        save_log_path, save_model_path, save_best_model, checkpoint,
+        logger, save_model_path, save_best_model, checkpoint,
         ): 
-        logger = Logger(save_log_path)
         logger.log_method_start(self.train.__name__, self.name)
 
         self.update_schedules(logger, model, schedule_configs, save_model_path)
@@ -161,9 +157,8 @@ class CustomizedTask(AlternativelyNamedObject):
 
     def transfer(
         self, schedule_configs, model, data, data_transfer, data_validation, batch_size, n_epoch, 
-        save_log_path, save_model_path, save_best_model, checkpoint,
+        logger, save_model_path, save_best_model, checkpoint,
     ): 
-        logger = Logger(save_log_path)
         logger.log_method_start(self.transfer.__name__, self.name)
 
         self.update_schedules(logger, model, schedule_configs, save_model_path)
