@@ -9,27 +9,29 @@ from src.config import ScheduleConfig
 from src.managers.base import AlternativelyNamedObject, ObjectManager
 from src.managers.schedule import ScheduleManager
 from src.managers.schedule import ClassificationSchedule, ClusteringSchedule, TranslationSchedule
+from src.managers.schedule import ClassificationFinetuneSchedule, ClusteringFinetuneSchedule, TranslationFinetuneSchedule
 from src.managers.schedule import LatentBatchAlignmentSchedule, ReconstructionBatchAlignmentSchedule
 
 
-class CustomizedTask(AlternativelyNamedObject):
-    name = 'customized' 
+class BaseTask(AlternativelyNamedObject):
+    name = 'Task' 
 
 
-    def update_schedules(self, logger, model, schedule_configs, save_model_path, method):
-        if schedule_configs is not None:
-            self.schedules = [
-                ScheduleManager.get_constructor_by_name(config.name)(
-                    logger, model, config, save_model_path, self.get_short_name(), method, schedule_order
-                ) 
-                for (schedule_order, config) in enumerate(schedule_configs)
-            ]
+    def update_schedules(self, logger, model, schedule_configs, model_path, method):
+        if schedule_configs is None:
+            raise Exception(f"Please provide {method}_schedules for {self.name} task.")
+        self.schedules = [
+            ScheduleManager.get_constructor_by_name(config.name)(
+                logger, model, config, model_path, self.get_short_name(), method, schedule_order
+            ) 
+            for (schedule_order, config) in enumerate(schedule_configs)
+        ]
 
     
     def run_through_data(
             self, logger, model, dataloader, epoch=None, schedule=None, 
             train_model=False, infer_model=False,
-            save_best_model=False, checkpoint_model_name=None,
+            save_best_model=False, checkpoint_model_name=None, writer=None,
         ):
         """\
         Losses can only computed by the schedule.
@@ -62,7 +64,7 @@ class CustomizedTask(AlternativelyNamedObject):
             all_losses = utils.average_dictionary_values_by_sample_size(all_losses, len(dataloader.dataset))
             logger.log_losses(all_losses)
             if epoch is not None:
-                schedule.log_losses(all_losses, epoch)
+                schedule.log_losses(writer, all_losses, epoch)
 
         if save_best_model and schedule.check_and_update_best_loss(all_losses):
             schedule.save_model(model)
@@ -119,19 +121,14 @@ class CustomizedTask(AlternativelyNamedObject):
         if len(modalities_provided) == 0 or data_infer.n_modality == len(modalities_provided):
             return DataManager.anndata_from_outputs(model, dataloader_infer.dataset, outputs)
 
-        raise Exception("Re-infer not implemented!")
+        raise Exception("Fill in missing modalities not implemented!")
 
-
-    def train(
-        self, schedule_configs, model, data, data_validation, batch_size, n_epoch, 
-        logger, save_model_path, save_best_model, checkpoint,
-        ): 
-        logger.log_method_start(self.train.__name__, self.name)
-
-        self.update_schedules(logger, model, schedule_configs, save_model_path, self.train.__name__)
-
+    
+    def train_with_schedules(
+        self, logger, model, n_epoch, data, data_validate, batch_size, save_best_model, checkpoint, writer
+    ):
         dataloader = data.create_dataloader(model, shuffle=True, batch_size=batch_size)
-        datalodaer_validation = data_validation.create_dataloader(model, shuffle=True, batch_size=batch_size)
+        dataloader_validate = data_validate.create_dataloader(model, shuffle=True, batch_size=batch_size)
 
         model.train()
         for epoch in range(n_epoch):
@@ -141,7 +138,7 @@ class CustomizedTask(AlternativelyNamedObject):
             for schedule in self.schedules:
                 logger.log_schedule_start(schedule)
 
-                self.run_through_data(logger, model, dataloader, epoch, schedule, train_model=True)
+                self.run_through_data(logger, model, dataloader, epoch, schedule, train_model=True, writer=writer)
 
                 if checkpoint > 0:
                     if epoch % checkpoint == 0:
@@ -151,28 +148,60 @@ class CustomizedTask(AlternativelyNamedObject):
 
                 with torch.no_grad():
                     self.run_through_data(
-                        logger, model, datalodaer_validation, schedule=schedule,
+                        logger, model, dataloader_validate, schedule=schedule,
                         save_best_model=save_best_model, checkpoint_model_name=checkpoint_model_name,
                     )
                 
-                schedule.writer.flush()
+                writer.flush()
+                
 
-        self.close_writers()
+    def train(
+        self, config, model, data, data_validate, batch_size, n_epoch, 
+        logger, model_path, save_best_model, checkpoint, writer,
+        ): 
+        logger.log_method_start(self.train.__name__, self.name)
+
+        self.update_schedules(
+            logger, model, self.train_schedule_configs or config.train_schedules, model_path, self.train.__name__
+        )
+
+        self.train_with_schedules(
+            logger, model, n_epoch, data, data_validate, batch_size, save_best_model, checkpoint, writer,
+        )
+
+
+    def finetune(
+        self, config, model, data, data_validate, batch_size, n_epoch, 
+        logger, model_path, save_best_model, checkpoint, writer,
+        ): 
+        logger.log_method_start(self.finetune.__name__, self.name)
+
+        self.update_schedules(
+            logger, model, self.finetune_schedule_configs or config.finetune_schedules, 
+            model_path, self.finetune.__name__
+        )
+
+        self.train_with_schedules(
+            logger, model, n_epoch, data, data_validate, batch_size, save_best_model, checkpoint, writer,
+        )
 
 
     def transfer(
-        self, schedule_configs, model, data, data_transfer, data_validation, batch_size, n_epoch, 
-        logger, save_model_path, save_best_model, checkpoint,
+        self, config, model, data, data_transfer, data_validate, batch_size, n_epoch, 
+        logger, model_path, save_best_model, checkpoint, writer,
     ): 
         logger.log_method_start(self.transfer.__name__, self.name)
 
-        self.update_schedules(logger, model, schedule_configs, save_model_path, self.transfer.__name__)
+        self.update_schedules(
+            logger, model, self.transfer_schedule_configs or config.transfer_schedules, 
+            model_path, self.transfer.__name__
+        )
 
         dataloader = data.create_dataloader(model, shuffle=True, batch_size=batch_size)
         dataloader_train_and_transfer = data.create_joint_dataloader(
             data_transfer, model, shuffle=True, batch_size=batch_size
         )
-        datalodaer_validation = data_validation.create_dataloader(model, shuffle=True, batch_size=batch_size)
+        datalodaer_validate = data_validate.create_dataloader(model, shuffle=True, batch_size=batch_size)
 
         for epoch in range(n_epoch):
             epoch += 1
@@ -180,10 +209,10 @@ class CustomizedTask(AlternativelyNamedObject):
             for schedule in self.schedules:
                 logger.log_schedule_start(schedule)
                 if isinstance(schedule, ClassificationSchedule):
-                    self.run_through_data(logger, model, dataloader, epoch, schedule, train_model=True)
+                    self.run_through_data(logger, model, dataloader, epoch, schedule, train_model=True, writer=writer)
                 else:
                     self.run_through_data(
-                        logger, model, dataloader_train_and_transfer, epoch, schedule, train_model=True
+                        logger, model, dataloader_train_and_transfer, epoch, schedule, train_model=True, writer=writer,
                     )
 
                 if checkpoint > 0:
@@ -194,78 +223,83 @@ class CustomizedTask(AlternativelyNamedObject):
 
                 with torch.no_grad():
                     self.run_through_data(
-                        logger, model, datalodaer_validation, schedule=schedule,
+                        logger, model, datalodaer_validate, schedule=schedule,
                         save_best_model=save_best_model, checkpoint_model_name=checkpoint_model_name,
                     )
                 
-                schedule.writer.flush()
-        
-        self.close_writers()
+                writer.flush()
 
 
-    def close_writers(self):
-        for schedule in self.schedules:
-            schedule.writer.close()
+class CustomizedTask(BaseTask):
+    name = 'customized' 
+    train_schedule_configs = None
+    finetune_schedule_configs = None
+    transfer_schedule_configs = None
 
 
-class CrossModelPredictionTask(CustomizedTask):
+class CrossModelPredictionTask(BaseTask):
     name = 'cross_model_prediction'    
-    def train(self, _, *args): 
-        schedule_configs = [
-            ScheduleConfig(name=ClassificationSchedule.name),
-            ScheduleConfig(name=TranslationSchedule.name),
-        ]
-        super().train(schedule_configs, *args)
+    train_schedule_configs = [
+        ScheduleConfig(name=ClassificationSchedule.name),
+        ScheduleConfig(name=TranslationSchedule.name),
+    ]
+
+    finetune_schedule_configs = [
+        ScheduleConfig(name=ClassificationFinetuneSchedule.name),
+        ScheduleConfig(name=TranslationFinetuneSchedule.name),
+    ]
 
 
-    def transfer(self, _, *args): 
-        schedule_configs = [
-            ScheduleConfig(name=LatentBatchAlignmentSchedule.name), 
-            ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
-            ScheduleConfig(name=ClassificationSchedule.name),
-            ScheduleConfig(name=TranslationSchedule.name),
-        ]
-        super().transfer(schedule_configs, *args)
+    transfer_schedule_configs = [
+        ScheduleConfig(name=LatentBatchAlignmentSchedule.name), 
+        ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
+        ScheduleConfig(name=ClassificationSchedule.name),
+        ScheduleConfig(name=TranslationSchedule.name),
+    ]
 
 
-class SupervisedGroupIdentificationTask(CustomizedTask):
+class SupervisedGroupIdentificationTask(BaseTask):
     name = 'supervised_group_identification'
-    def train(self, _, *args): 
-        schedule_configs = [
-            ScheduleConfig(name=TranslationSchedule.name),
-            ScheduleConfig(name=ClassificationSchedule.name),
-        ]
-        super().train(schedule_configs, *args)
+    train_schedule_configs = [
+        ScheduleConfig(name=TranslationSchedule.name),
+        ScheduleConfig(name=ClassificationSchedule.name),
+    ]
 
 
-    def transfer(self, _, *args): 
-        schedule_configs = [
-            ScheduleConfig(name=LatentBatchAlignmentSchedule.name), 
-            ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
-            ScheduleConfig(name=TranslationSchedule.name),
-            ScheduleConfig(name=ClassificationSchedule.name),
-        ]
-        super().transfer(schedule_configs, *args)
+    finetune_schedule_configs = [
+        ScheduleConfig(name=TranslationFinetuneSchedule.name),
+        ScheduleConfig(name=ClassificationFinetuneSchedule.name),
+    ]
 
 
-class UnsupervisedGroupIdentificationTask(CustomizedTask):
+    transfer_schedule_configs = [
+        ScheduleConfig(name=LatentBatchAlignmentSchedule.name), 
+        ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
+        ScheduleConfig(name=TranslationSchedule.name),
+        ScheduleConfig(name=ClassificationSchedule.name),
+    ]
+
+
+class UnsupervisedGroupIdentificationTask(BaseTask):
     name = 'unsupervised_group_identification'
-    def train(self, _, *args): 
-        schedule_configs = [
-            ScheduleConfig(name=TranslationSchedule.name),
-            ScheduleConfig(name=ClusteringSchedule.name),
-        ]
-        super().train(schedule_configs, *args)
+    train_schedule_configs = [
+        ScheduleConfig(name=TranslationSchedule.name),
+        ScheduleConfig(name=ClusteringSchedule.name),
+    ]
+
+    
+    finetune_schedule_configs = [
+        ScheduleConfig(name=TranslationFinetuneSchedule.name),
+        ScheduleConfig(name=ClusteringFinetuneSchedule.name),
+    ]
 
 
-    def transfer(self, _, *args): 
-        schedule_configs = [
-            ScheduleConfig(name=LatentBatchAlignmentSchedule.name), 
-            ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
-            ScheduleConfig(name=TranslationSchedule.name),
-            ScheduleConfig(name=ClusteringSchedule.name),
-        ]
-        super().transfer(schedule_configs, *args)
+    transfer_schedule_configs = [
+        ScheduleConfig(name=LatentBatchAlignmentSchedule.name), 
+        ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
+        ScheduleConfig(name=TranslationSchedule.name),
+        ScheduleConfig(name=ClusteringSchedule.name),
+    ]
 
 
 class TaskManager(ObjectManager):
@@ -276,6 +310,12 @@ class TaskManager(ObjectManager):
     """
     name = 'tasks'
     constructors = [
-        CustomizedTask, 
         CrossModelPredictionTask, SupervisedGroupIdentificationTask, UnsupervisedGroupIdentificationTask,
     ]
+
+    @staticmethod
+    def get_task_by_name_or_config(task):
+        if isinstance(task, str):
+            return TaskManager.get_constructor_by_name(task)()
+        else:
+            return CustomizedTask()

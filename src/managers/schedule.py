@@ -14,30 +14,34 @@ from src.managers.loss import ContrastiveLoss, DiscriminatorLoss, GeneratorLoss,
 from src.utils import sum_value_lists
 
 
-class CustomizedSchedule(AlternativelyNamedObject):
-    name = 'customized'
+class BaseSchedule(AlternativelyNamedObject):
+    name = 'Schedule'
 
 
-    def __init__(self, logger, model, config, save_model_path, task, method, order):
+    def __init__(self, logger, model, config, model_path, task, method, order):
         self.logger = logger
-        self.writer = tf.summary.create_file_writer('saved_runs')
 
-        loss_configs = config.losses or self.loss_configs 
+        loss_configs = self.loss_configs or config.losses 
+        if loss_configs is None: 
+            raise Exception(f"Please provide loss configs for {self.name} schedule.")
         self.losses = [
             LossManager.get_constructor_by_name(loss_config.name)(loss_config, model)
             for loss_config in loss_configs
         ]
 
+        optimizer_modules = self.optimizer_modules or config.optimizer.modules
+        if optimizer_modules is None:
+            raise Exception(f"Please provide optimizer modules for {self.name} schedule.")
         model.create_optimizer_for_schedule(
-            config.optimizer, self.name, config.optimizer.modules or self.optimizer_modules
+            config.optimizer, self.name, optimizer_modules
         )
 
         self.order = order
-        if save_model_path is None:
-            self.save_model_path = None
+        if model_path is None:
+            self.model_path = None
         else:
-            self.save_model_path = f'{save_model_path}/{task}_{method}_{self.order}_{self.name}'
-            os.makedirs(self.save_model_path, exist_ok=True)
+            self.model_path = f'{model_path}/{task}_{method}_{self.order}_{self.name}'
+            os.makedirs(self.model_path, exist_ok=True)
 
         self.best_loss_term = config.best_loss_term
         self.best_loss = np.inf
@@ -55,16 +59,16 @@ class CustomizedSchedule(AlternativelyNamedObject):
             return False
 
     
-    def log_losses(self, losses, epoch):
-        with self.writer.as_default():
+    def log_losses(self, writer, losses, epoch):
+        with writer.as_default():
             for term in losses:
-                tf.summary.scalar(f'{self.save_model_path}/{term}', losses[term].detach().cpu().numpy(), step=epoch)
+                tf.summary.scalar(f'{self.model_path}/{term}', losses[term].detach().cpu().numpy(), step=epoch)
 
     
     def save_model(self, model, name='best.pt'):
-        if self.save_model_path is None:
+        if self.model_path is None:
             raise Exception("Please provide models saving path.")
-        fullname = f'{self.save_model_path}/{name}'
+        fullname = f'{self.model_path}/{name}'
         self.logger.log_save_model(fullname)
         model.save_model(fullname)
 
@@ -96,7 +100,13 @@ class CustomizedSchedule(AlternativelyNamedObject):
         return losses
 
 
-class ClassificationSchedule(CustomizedSchedule):
+class CustomizedSchedule(BaseSchedule):
+    name = 'customized'
+    loss_configs = None
+    optimizer_modules = None
+
+
+class ClassificationSchedule(BaseSchedule):
     name = 'classification'
     loss_configs = [
         LossConfig(name=CrossEntropyLoss.name), LossConfig(name=ReconstructionLoss.name), 
@@ -107,7 +117,18 @@ class ClassificationSchedule(CustomizedSchedule):
     ]
 
 
-class ClusteringSchedule(CustomizedSchedule):
+class ClassificationFinetuneSchedule(BaseSchedule):
+    name = 'classification_finetune'
+    loss_configs = [
+        LossConfig(name=CrossEntropyLoss.name), LossConfig(name=ReconstructionLoss.name), 
+        LossConfig(name=ContrastiveLoss.name),
+    ]
+    optimizer_modules = [
+        ModuleNames.encoders, ModuleNames.fusers, ModuleNames.clusters
+    ]
+
+
+class ClusteringSchedule(BaseSchedule):
     name = 'clustering'
     loss_configs = [
         LossConfig(name=SelfEntropyLoss.name), 
@@ -119,17 +140,19 @@ class ClusteringSchedule(CustomizedSchedule):
     ]
 
 
-class LatentBatchAlignmentSchedule(CustomizedSchedule):
-    name = 'latent_batch_alignment'
+class ClusteringFinetuneSchedule(BaseSchedule):
+    name = 'clustering_finetune'
     loss_configs = [
-        LossConfig(name=LatentMMDLoss.name)
+        LossConfig(name=SelfEntropyLoss.name), 
+        LossConfig(name=DDC1Loss.name), LossConfig(name=DDC3Loss.name), 
+        LossConfig(name=ReconstructionLoss.name)
     ]
     optimizer_modules = [
-        ModuleNames.encoders
+        ModuleNames.fusers, ModuleNames.clusters
     ]
 
 
-class TranslationSchedule(CustomizedSchedule):
+class TranslationSchedule(BaseSchedule):
     name = 'translation'
     loss_configs = [
         LossConfig(name=ContrastiveLoss.name), 
@@ -141,7 +164,29 @@ class TranslationSchedule(CustomizedSchedule):
     ]
 
 
-class ReconstructionBatchAlignmentSchedule(CustomizedSchedule):
+class TranslationFinetuneSchedule(BaseSchedule):
+    name = 'translation_finetune'
+    loss_configs = [
+        LossConfig(name=ContrastiveLoss.name), 
+        LossConfig(name=ReconstructionLoss.name), LossConfig(name=TranslationLoss.name), 
+        # LossConfig(name=DiscriminatorLoss.name),  LossConfig(name=GeneratorLoss.name),
+    ]
+    optimizer_modules = [
+        ModuleNames.encoders, ModuleNames.decoders, ModuleNames.discriminators
+    ]
+
+
+class LatentBatchAlignmentSchedule(BaseSchedule):
+    name = 'latent_batch_alignment'
+    loss_configs = [
+        LossConfig(name=LatentMMDLoss.name)
+    ]
+    optimizer_modules = [
+        ModuleNames.encoders
+    ]
+
+
+class ReconstructionBatchAlignmentSchedule(BaseSchedule):
     name = 'reconstruction_batch_alignment'
     loss_configs = [
         LossConfig(name=ReconstructionMMDLoss.name)

@@ -1,14 +1,15 @@
 import anndata
 import numpy, random, torch
+import tensorflow as tf
 
-from typing import List
+from typing import List, Union
 
-from src.config import ModelConfig, ScheduleConfig
+from src.config import ModelConfig, TaskConfig
 from src.logger import Logger
 from src.model import create_model_from_data, load_model_from_path, Model
 from src.managers.data import Data, DataManager
 from src.managers.data import EvaluationData, InferenceData, TrainingData, TransferenceData, ValidationData
-from src.managers.task import CustomizedTask, TaskManager
+from src.managers.task import BaseTask, TaskManager
 from src.utils import set_random_seed
 
 
@@ -19,9 +20,14 @@ class UnitedNet:
     """\
     API Interface
     """
-    def __init__(self, save_model_path='saved_models', save_log_path='saved_log'):
-        self.set_save_model_path(save_model_path)
-        self.set_save_log_path(save_log_path)
+    def __init__(self, 
+        log_path='saved_log',
+        model_path='saved_models', 
+        tensorboard_path='saved_tensorboards',
+    ):
+        self.set_log_path(log_path)
+        self.set_model_path(model_path)
+        self.set_tensorboard_path(tensorboard_path)
 
 
     def register_anndatas(self, 
@@ -34,17 +40,6 @@ class UnitedNet:
         """\
         Save or override existing training dataset. 
         If overriding existing training dataset, the model will also be refreshed.
-
-        adatas
-            list of at modalities as anndata.
-        reference_index_batch
-            index of the modality to look up batch information.
-        obs_key_batch
-            key to look up batch information from the reference adata.
-        reference_index_label
-            index of the modality to look up label information.
-        obs_key_label
-            key to look up label information from the reference adata.
         """
         self.data = DataManager.format_anndatas(
             TrainingData.name, adatas, batch_index, batch_key, label_index, label_key
@@ -52,8 +47,8 @@ class UnitedNet:
         self.model = create_model_from_data(self.data)
 
 
-    def fit(self, 
-        task:                 str,
+    def train(self, 
+        task:                 Union[str, TaskConfig],
         adatas_validate:      List[anndata.AnnData] = None, 
         label_index_validate: int                   = None, 
         label_key_validate:   str                   = None,
@@ -61,112 +56,129 @@ class UnitedNet:
         batch_key_validate:   str                   = None,
         n_epoch:              int                   = 1,
         batch_size:           int                   = 512,
-        schedule_configs:     List[ScheduleConfig]  = None,
         save_best_model:      bool                  = False,
         checkpoint:           int                   = 0,
     ):
         """\
-        Fitting the current model on the saved training dataset.
-        
-        adatas_eval
-            Used as evaluating dataset if provided. 
-            Otherwise use the training dataset for evaluation.
+        Training the current model on the saved training dataset.
         """
-        self._check_model_exist()
-
-        self._check_data_exist()
-             
-        data_validation = self._format_data_or_retrieve_registered(
-            ValidationData.name, adatas_validate, 
-            batch_index_validate, batch_key_validate, 
-            label_index_validate, label_key_validate
+        data_validate = self._retrieve_validation_data(
+            adatas_validate, 
+            label_index_validate, label_key_validate,
+            batch_index_validate, batch_key_validate,
         )
 
-        task_manager = TaskManager.get_constructor_by_name(task)()
-        task_manager.train(
-            schedule_configs, self.model, self.data, data_validation, batch_size, n_epoch, 
-            self.logger, self.save_model_path, save_best_model, checkpoint,
+        self._start_writer()
+
+        TaskManager.get_task_by_name_or_config(task).train(
+            task, self.model, self.data, data_validate, batch_size, n_epoch, 
+            self.logger, self.model_path, save_best_model, checkpoint, self.writer,
         )
+
+        self._close_writer()
+
+
+    def finetune(self, 
+        task:                 Union[str, TaskConfig],
+        adatas_validate:      List[anndata.AnnData] = None, 
+        label_index_validate: int                   = None, 
+        label_key_validate:   str                   = None,
+        batch_index_validate: int                   = None, 
+        batch_key_validate:   str                   = None,
+        n_epoch:              int                   = 1,
+        batch_size:           int                   = 512,
+        save_best_model:      bool                  = False,
+        checkpoint:           int                   = 0,
+    ):
+        """\
+        Training the current model on the saved training dataset.
+        """
+        data_validate = self._retrieve_validation_data(
+            adatas_validate, 
+            label_index_validate, label_key_validate,
+            batch_index_validate, batch_key_validate,
+        )
+
+        self._start_writer()
+
+        TaskManager.get_task_by_name_or_config(task).finetune(
+            task, self.model, self.data, data_validate, batch_size, n_epoch, 
+            self.logger, self.model_path, save_best_model, checkpoint, self.writer,
+        )
+
+        self._close_writer()
 
 
     def transfer(self,
-        task:                     str,
-        adatas_transference:      List[anndata.AnnData], 
-        label_index_transference: int, 
-        label_key_transference:   str,
-        batch_index_transference: int                   = None, 
-        batch_key_transference:   str                   = None,
-        adatas_validation:        List[anndata.AnnData] = None, 
-        label_index_validation:   int                   = None, 
-        label_key_validation:     str                   = None,
-        batch_index_validation:   int                   = None, 
-        batch_key_validation:     str                   = None,
-        n_epoch:                  int                   = 1,
-        batch_size:               int                   = 512,
-        schedule_configs:         List[ScheduleConfig]  = None,
-        save_best_model:          bool                  = False,
-        checkpoint:               int                   = 0,
+        task:                 Union[str, TaskConfig],
+        adatas_transfer:      List[anndata.AnnData], 
+        label_index_transfer: int, 
+        label_key_transfer:   str,
+        batch_index_transfer: int                   = None, 
+        batch_key_transfer:   str                   = None,
+        adatas_validate:      List[anndata.AnnData] = None, 
+        label_index_validate: int                   = None, 
+        label_key_validate:   str                   = None,
+        batch_index_validate: int                   = None, 
+        batch_key_validate:   str                   = None,
+        n_epoch:              int                   = 1,
+        batch_size:           int                   = 512,
+        save_best_model:      bool                  = False,
+        checkpoint:           int                   = 0,
     ):
         """\
         Perform ransfer learning on the adatas_transfer dataset. 
-
-        adatas_transfer
-            The setting of adata_infer must match the saved adata.
         """
-        self._check_model_exist()
-        self._check_data_exist()
+        data_validate = self._retrieve_validation_data(
+            adatas_validate, 
+            label_index_validate, label_key_validate,
+            batch_index_validate, batch_key_validate,
+        )
 
         data_transfer = DataManager.format_anndatas(
-            TransferenceData.name, adatas_transference, 
-            batch_index_transference, batch_key_transference, 
-            label_index_transference, label_key_transference,
-        )
-             
-        data_validation = self._format_data_or_retrieve_registered(
-            ValidationData.name, adatas_validation, 
-            batch_index_validation, batch_key_validation, 
-            label_index_validation, label_key_validation,
+            TransferenceData.name, adatas_transfer, 
+            batch_index_transfer, batch_key_transfer, 
+            label_index_transfer, label_key_transfer,
         )
 
-        task_manager = TaskManager.get_constructor_by_name(task)()
-        task_manager.transfer(
-            schedule_configs, self.model, self.data, data_transfer, data_validation, batch_size, n_epoch, 
-            self.logger, self.save_model_path, save_best_model, checkpoint,
+        self._start_writer()
+
+        TaskManager.get_task_by_name_or_config(task).transfer(
+            task, self.model, self.data, data_transfer, data_validate, batch_size, n_epoch, 
+            self.logger, self.model_path, save_best_model, checkpoint, self.writer,
         )
+
+        self._close_writer()
 
 
     def evaluate(self, 
-        adatas_evaluation:      List[anndata.AnnData] = None, 
-        label_index_evaluation: int                   = None, 
-        label_key_evaluation:   str                   = None,
-        batch_index_evaluation: int                   = None, 
-        batch_key_evaluation:   str                   = None,\
+        adatas_evaluate:      List[anndata.AnnData] = None, 
+        label_index_evaluate: int                   = None, 
+        label_key_evaluate:   str                   = None,
+        batch_index_evaluate: int                   = None, 
+        batch_key_evaluate:   str                   = None,\
     ):
         """\
         Evaluate the current model with the adatas_eval dataset, or the registered data if the former not provided.
-
-        adatas_eval
-            The setting of adata_eval must match the saved adata.
         """
         self._check_model_exist()
 
         data_evaluation = self._format_data_or_retrieve_registered(
-            EvaluationData.name, adatas_evaluation, 
-            batch_index_evaluation, batch_key_evaluation, 
-            label_index_evaluation, label_key_evaluation
+            EvaluationData.name, adatas_evaluate, 
+            batch_index_evaluate, batch_key_evaluate, 
+            label_index_evaluate, label_key_evaluate
         )
 
-        task_manager = TaskManager.get_constructor_by_name(CustomizedTask.name)()
-        return task_manager.evaluate(self.model, data_evaluation, self.logger)
+        return BaseTask().evaluate(self.model, data_evaluation, self.logger)
 
 
     def infer(self,
-        adatas_inference:        List[anndata.AnnData] = None, 
-        modalities_provided:     List                  = [],
-        batch_index_inference:   int                   = None, 
-        batch_key_inference:     str                   = None,
-        modality_sizes:          List[int]             = None,
-    ) -> anndata.AnnData:
+        adatas_infer:        List[anndata.AnnData] = None, 
+        modalities_provided: List                  = [],
+        batch_index_infer:   int                   = None, 
+        batch_key_infer:     str                   = None,
+        modality_sizes:      List[int]             = None,
+    ) -> Union[List[List[anndata.AnnData]], anndata.AnnData]:
         """\
         Produce inference result for the adatas_infer dataset, or the registered data if the former not provided. 
         """
@@ -176,12 +188,11 @@ class UnitedNet:
             self._check_data_exist()
 
         data_inference = self._format_data_or_retrieve_registered(
-            InferenceData.name, adatas_inference, batch_index_inference, batch_key_inference, 
+            InferenceData.name, adatas_infer, batch_index_infer, batch_key_infer, 
             modalities_provided=modalities_provided, modality_sizes=modality_sizes or self.data.modality_sizes,
         )
 
-        task_manager = TaskManager.get_constructor_by_name(CustomizedTask.name)()
-        return task_manager.infer(self.model, data_inference, self.logger, modalities_provided)
+        return BaseTask().infer(self.model, data_inference, self.logger, modalities_provided)
 
 
     def load_model(self, path: str) -> None:
@@ -214,16 +225,20 @@ class UnitedNet:
     
     def set_device(self, device: str='cpu'):
         self._check_model_exist()
-        self.model.save_device_in_use(device)
+        self.model.set_device_in_use(device)
         self.model = self.model.to(device=device)
 
-
-    def set_save_model_path(self, save_model_path):
-        self.save_model_path = save_model_path
-
     
-    def set_save_log_path(self, save_log_path):
-        self.logger = Logger(save_log_path)
+    def set_log_path(self, log_path):
+        self.logger = Logger(log_path)
+
+
+    def set_model_path(self, model_path):
+        self.model_path = model_path
+
+
+    def set_tensorboard_path(self, tensorboard_path):
+        self.tensorboard_path = tensorboard_path
 
 
     def _get_data(self):
@@ -267,3 +282,25 @@ class UnitedNet:
     def _check_data_exist(self):
         if self.data is None:
             raise Exception("Please first register your training dataset with the register_anndatas method.")
+
+    
+    def _retrieve_validation_data(self, 
+        adatas_validate,
+        label_index_validate, label_key_validate, 
+        batch_index_validate, batch_key_validate,
+    ):
+        self._check_model_exist()
+        self._check_data_exist()
+        return self._format_data_or_retrieve_registered(
+            ValidationData.name, adatas_validate, 
+            batch_index_validate, batch_key_validate, 
+            label_index_validate, label_key_validate
+        )
+
+
+    def _start_writer(self):
+        self.writer = tf.summary.create_file_writer(self.tensorboard_path)
+
+
+    def _close_writer(self):
+        self.writer.close()

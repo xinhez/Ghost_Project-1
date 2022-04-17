@@ -8,7 +8,7 @@ class Loss(NamedObject):
     name = 'Loss'
     based_on_head = False
     def __init__(self, config, _):
-        self.weight = config.weight
+        self.weight = config.weight or 1
 
 
     @staticmethod
@@ -24,6 +24,8 @@ class LatentMMDLoss(Loss):
     """\
     Adapted from https://github.com/KrishnaswamyLab/SAUCIE/blob/master/model.py
     """
+    def __init__(self, config, _):
+        self.weight = config.weight or 0.01
     @staticmethod
     def _pairwise_dists(x1, x2):
         """Helper function to calculate pairwise distances between tensors x1 and x2."""

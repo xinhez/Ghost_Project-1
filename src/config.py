@@ -87,9 +87,9 @@ class OptimizerConfig(Config):
 # ==================== Loss Config Definition ====================
 class LossConfig(Config):
     name:           str
-    weight:         float = 1
-    tau:            float = 0.1
-    sampling_ratio: float = 0.25
+    weight:         none_or_type(float) = None
+    tau:            float               = 0.1
+    sampling_ratio: float               = 0.25
 
 
 # ==================== Schedule Config Definition ====================
@@ -98,6 +98,13 @@ class ScheduleConfig(Config):
     best_loss_term: str                     = None
     losses:    none_or_typelist(LossConfig) = None
     optimizer: OptimizerConfig              = OptimizerConfig()
+
+
+# ==================== Task Config Definition ====================
+class TaskConfig(Config):
+    train_schedules:    List[ScheduleConfig] = None
+    finetune_schedules: List[ScheduleConfig] = None
+    transfer_schedules: List[ScheduleConfig] = None
 
     
 # ==================== Model Config Definition ====================

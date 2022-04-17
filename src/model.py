@@ -122,7 +122,7 @@ class Model(nn.Module):
         return self.batches.shape[0]
 
     
-    def save_device_in_use(self, device):
+    def set_device_in_use(self, device):
         self.device_in_use = device 
 
 
