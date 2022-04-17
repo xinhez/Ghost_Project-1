@@ -6,18 +6,23 @@ class Optimizer(nn.Module):
     """\
     Optimizer
     """
+
     def __init__(self, config, parameters):
         self.parameters = parameters
         self.clip_norm = config.clip_norm
         self.optimizer = optim.Adam(parameters, lr=config.learning_rate)
-        self.scheduler = None if config.scheduler is None else optim.lr_scheduler.StepLR(
-            self.optimizer, step_size=config.scheduler.step_size, gamma=config.scheduler.gamma
+        self.scheduler = (
+            None
+            if config.scheduler is None
+            else optim.lr_scheduler.StepLR(
+                self.optimizer,
+                step_size=config.scheduler.step_size,
+                gamma=config.scheduler.gamma,
+            )
         )
-
 
     def zero_grad(self):
         self.optimizer.zero_grad()
-
 
     def step(self):
         if self.clip_norm is not None:

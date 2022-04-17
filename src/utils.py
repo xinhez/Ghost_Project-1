@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+
 RANDOM_SEED = 3407
 
 
@@ -41,20 +42,24 @@ def combine_tensor_lists(list0, list1):
     This method does not check types if at least one of the supplied lists is empty.
     """
     if len(list0) == 0:
-        return list1 
+        return list1
     elif len(list1) == 0:
         return list0
     elif len(list0) != len(list1):
         raise Exception("Please only combine lists of the same length.")
-        
+
     combined_lists = []
     for l0, l1 in zip(list0, list1):
         if isinstance(l0, list) or isinstance(l1, list):
             combined_lists.append(combine_tensor_lists(l0, l1))
         elif not torch.is_tensor(l0):
-            raise Exception(f"Type {type(l0)} is not supported in combine_tensor_lists.")
+            raise Exception(
+                f"Type {type(l0)} is not supported in combine_tensor_lists."
+            )
         elif not torch.is_tensor(l1):
-            raise Exception(f"Type {type(l1)} is not supported in combine_tensor_lists.")
+            raise Exception(
+                f"Type {type(l1)} is not supported in combine_tensor_lists."
+            )
         else:
             combined_lists.append(torch.cat([l0, l1], dim=0))
     return combined_lists
@@ -89,7 +94,7 @@ def sum_value_dictionaries(dictionary0, dictionary1):
         return dictionary1
     elif not dictionary1:
         return dictionary0
-        
+
     combined_dictionary = {}
     for key in set(dictionary0.keys()).union(set(dictionary1.keys())):
         combined_dictionary[key] = dictionary0.get(key, 0) + dictionary1.get(key, 0)

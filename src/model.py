@@ -19,155 +19,167 @@ def create_module_list(constructor, configs):
 
 
 class ModuleNames:
-    encoders       = 'encoders'
-    decoders       = 'decoders'
-    discriminators = 'discriminators'
-    fusers         = 'fusers'
-    clusters       = 'clusters'
+    encoders = "encoders"
+    decoders = "decoders"
+    discriminators = "discriminators"
+    fusers = "fusers"
+    clusters = "clusters"
 
 
 class Model(nn.Module):
     """
     Model
     """
-    name = 'Model'
 
+    name = "Model"
 
     @staticmethod
     def kaiming_init_weights(module):
         if isinstance(module, nn.Linear):
             nn.init.kaiming_normal_(module.weight)
-    
 
     def __init__(self, config):
         super().__init__()
         self.config = None
-        self.data_label_encoder = LabelEncoder() 
+        self.data_label_encoder = LabelEncoder()
         self.data_batch_encoder = LabelEncoder()
         self.update_config(config)
 
-    
     def update_config(self, config):
         config = combine_config(self.config, config)
         self.config = config
 
-        self.modules_by_names = nn.ModuleDict({
-            ModuleNames.encoders:       create_module_list(MLP,          config.encoders),
-            ModuleNames.decoders:       create_module_list(MLP,          config.decoders), 
-            ModuleNames.discriminators: create_module_list(MLP,          config.discriminators),
-            ModuleNames.fusers:         create_module_list(FuserManager, config.fusers),
-            ModuleNames.clusters:       create_module_list(MLP,          config.clusters),
-        })
+        self.modules_by_names = nn.ModuleDict(
+            {
+                ModuleNames.encoders: create_module_list(MLP, config.encoders),
+                ModuleNames.decoders: create_module_list(MLP, config.decoders),
+                ModuleNames.discriminators: create_module_list(
+                    MLP, config.discriminators
+                ),
+                ModuleNames.fusers: create_module_list(FuserManager, config.fusers),
+                ModuleNames.clusters: create_module_list(MLP, config.clusters),
+            }
+        )
 
         self.optimizers_by_schedule = {}
-        
-        self.best_head = 0 
+
+        self.best_head = 0
 
         self.apply(Model.kaiming_init_weights)
-
 
     def create_optimizer_for_schedule(self, config, schedule_name, module_names):
         if schedule_name not in self.optimizers_by_schedule:
             optimizer = Optimizer(
-                config, 
-                chain.from_iterable([self.modules_by_names[module_name].parameters() for module_name in module_names])
+                config,
+                chain.from_iterable(
+                    [
+                        self.modules_by_names[module_name].parameters()
+                        for module_name in module_names
+                    ]
+                ),
             )
             self.optimizers_by_schedule[schedule_name] = optimizer
 
-    
     @property
     def encoders(self):
         return self.modules_by_names[ModuleNames.encoders]
-
 
     @property
     def decoders(self):
         return self.modules_by_names[ModuleNames.decoders]
 
-
     @property
     def discriminators(self):
         return self.modules_by_names[ModuleNames.discriminators]
-
 
     @property
     def fusers(self):
         return self.modules_by_names[ModuleNames.fusers]
 
-
     @property
     def clusters(self):
         return self.modules_by_names[ModuleNames.clusters]
 
-    
     @property
     def n_head(self):
         if len(self.fusers) != len(self.clusters):
             raise Exception("Model must have the same number of fusers and clusters.")
         return len(self.fusers)
 
-
     @property
     def n_modality(self):
         return len(self.encoders)
 
-    
     @property
     def n_output(self):
         return self.config.output_size
-
 
     @property
     def n_sample(self):
         return self.batches.shape[0]
 
-    
     def set_device_in_use(self, device):
-        self.device_in_use = device 
+        self.device_in_use = device
 
-
-    def forward(self, modalities, batches, labels, cluster_requested=True, discriminator_requested=False):
-        self.modalities = [modality.to(device=self.device_in_use) for modality in modalities]
-        self.batches    = batches.to(device=self.device_in_use)
-        self.labels     = labels.to(device=self.device_in_use) if labels is not None else None
+    def forward(
+        self,
+        modalities,
+        batches,
+        labels,
+        cluster_requested=True,
+        discriminator_requested=False,
+    ):
+        self.modalities = [
+            modality.to(device=self.device_in_use) for modality in modalities
+        ]
+        self.batches = batches.to(device=self.device_in_use)
+        self.labels = (
+            labels.to(device=self.device_in_use) if labels is not None else None
+        )
 
         self.latents = [
-            encoder(modality) for (encoder, modality) in zip(self.encoders, self.modalities)
+            encoder(modality)
+            for (encoder, modality) in zip(self.encoders, self.modalities)
         ]
 
         self.translations = [
-            [
-                decoder(latent) for latent in self.latents
-            ] for decoder in self.decoders
+            [decoder(latent) for latent in self.latents] for decoder in self.decoders
         ]
 
         if discriminator_requested:
             self.discriminator_real_outputs = [
-                discriminator(modality) for (discriminator, modality) in zip(self.discriminators, self.modalities)
+                discriminator(modality)
+                for (discriminator, modality) in zip(
+                    self.discriminators, self.modalities
+                )
             ]
 
             self.discriminator_fake_outputs = [
-                discriminator(self.translations[i][i].detach()) for i, discriminator in enumerate(self.discriminators)
+                discriminator(self.translations[i][i].detach())
+                for i, discriminator in enumerate(self.discriminators)
             ]
 
             self.generator_outputs = [
-                discriminator(self.translations[i][i]) for i, discriminator in enumerate(self.discriminators)
+                discriminator(self.translations[i][i])
+                for i, discriminator in enumerate(self.discriminators)
             ]
 
         if cluster_requested:
-            self.fused_latents = [
-                fuser(self.latents) for fuser in self.fusers
-            ]
+            self.fused_latents = [fuser(self.latents) for fuser in self.fusers]
 
             self.cluster_outputs = [
-                cluster(fused_latent) for (cluster, fused_latent) in zip(self.clusters, self.fused_latents)
+                cluster(fused_latent)
+                for (cluster, fused_latent) in zip(self.clusters, self.fused_latents)
             ]
-            
-            return self.translations, self.cluster_outputs[self.best_head], self.fused_latents[self.best_head]
+
+            return (
+                self.translations,
+                self.cluster_outputs[self.best_head],
+                self.fused_latents[self.best_head],
+            )
 
         else:
             return self.translations, None, None
-
 
     def save_model(self, path):
         """\

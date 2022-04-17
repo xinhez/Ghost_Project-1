@@ -16,8 +16,7 @@ class MLP(nn.Module):
             self.add_linear_layer(input_sizes[i], output_sizes[i], config.use_biases, i)
             self.add_dropout_layer(config.dropouts, i)
             self.add_batch_norms_layer(config.use_batch_norms, i, output_sizes[i])
-            self.add_activation_layer (config.activations, i)
-
+            self.add_activation_layer(config.activations, i)
 
     def add_linear_layer(self, input_size, output_size, use_biases, i):
         use_bias = use_biases[i] if isinstance(use_biases, list) else use_biases
@@ -25,23 +24,23 @@ class MLP(nn.Module):
             nn.Linear(in_features=input_size, out_features=output_size, bias=use_bias)
         )
 
-    
     def add_dropout_layer(self, dropouts, i):
         if isinstance(dropouts, list) and dropouts[i] > 0:
             self.layers.append(nn.Dropout(p=dropouts[i]))
         elif isinstance(dropouts, float) and dropouts > 0:
             self.layers.append(nn.Dropout(p=dropouts))
-    
 
     def add_batch_norms_layer(self, use_batch_norms, i, output_size):
-        if ((isinstance(use_batch_norms, list) and use_batch_norms[i]) or 
-            (isinstance(use_batch_norms, bool) and use_batch_norms)):
+        if (isinstance(use_batch_norms, list) and use_batch_norms[i]) or (
+            isinstance(use_batch_norms, bool) and use_batch_norms
+        ):
             self.layers.append(nn.BatchNorm1d(output_size))
-        
-    
+
     def add_activation_layer(self, activations, i):
         if isinstance(activations, list) and activations[i] is not None:
-            constructor = ActivationManager.get_constructor_by_name(activations[i].method)
+            constructor = ActivationManager.get_constructor_by_name(
+                activations[i].method
+            )
         elif isinstance(activations, ActivationConfig):
             constructor = ActivationManager.get_constructor_by_name(activations.method)
         else:
@@ -52,7 +51,6 @@ class MLP(nn.Module):
         elif constructor is not None:
             self.layers.append(constructor())
 
-    
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)

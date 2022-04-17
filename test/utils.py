@@ -2,7 +2,12 @@ import torch
 
 from unittest import TestCase
 
-from src.utils import average_dictionary_values_by_sample_size, count_unique, convert_to_lowercase, combine_tensor_lists
+from src.utils import (
+    average_dictionary_values_by_sample_size,
+    count_unique,
+    convert_to_lowercase,
+    combine_tensor_lists,
+)
 from src.utils import sum_value_dictionaries, sum_value_lists
 
 
@@ -12,29 +17,26 @@ class TestUtils(TestCase):
         self.assertEqual({}, average_dictionary_values_by_sample_size({}, 1))
 
         d = {
-            'test_key0': 2,
-            'test_key1': 20, 
+            "test_key0": 2,
+            "test_key1": 20,
         }
         expected_d = {
-            'test_key0': 1,
-            'test_key1': 10,
+            "test_key0": 1,
+            "test_key1": 10,
         }
         self.assertEqual(expected_d, average_dictionary_values_by_sample_size(d, 2))
-
 
     def test_count_unique(self):
         self.assertEqual(0, count_unique([]))
 
-        l = [0, 1, 'a', 'b', 0, 1]
+        l = [0, 1, "a", "b", 0, 1]
         self.assertEqual(4, count_unique(l))
-
 
     def test_convert_to_lowercase(self):
         self.assertEqual(0, convert_to_lowercase(0))
-        self.assertEqual('a', convert_to_lowercase('a'))
-        self.assertEqual('a', convert_to_lowercase('A'))
-        self.assertEqual('abca', convert_to_lowercase('AbCa'))
-
+        self.assertEqual("a", convert_to_lowercase("a"))
+        self.assertEqual("a", convert_to_lowercase("A"))
+        self.assertEqual("abca", convert_to_lowercase("AbCa"))
 
     def test_combine_tensor_lists(self):
         self.assertEqual([], combine_tensor_lists([], []))
@@ -55,39 +57,36 @@ class TestUtils(TestCase):
         l = [1]
         self.assertRaises(Exception, combine_tensor_lists, l, l)
 
-
     def test_combine_value_dictionaries(self):
         self.assertEqual({}, sum_value_dictionaries({}, {}))
 
         d = {
-            'test_key': 0,
+            "test_key": 0,
         }
         self.assertEqual(d, sum_value_dictionaries({}, d))
         self.assertEqual(d, sum_value_dictionaries(d, {}))
 
         d0 = {
-            'test_key0': 0,
+            "test_key0": 0,
         }
         d1 = {
-            'test_key1': 1,
+            "test_key1": 1,
         }
         expected_d = {
-            'test_key0': 0,
-            'test_key1': 1,
+            "test_key0": 0,
+            "test_key1": 1,
         }
         self.assertEqual(expected_d, sum_value_dictionaries(d0, d1))
 
-
         d = {
-            'test_key0': 0,
-            'test_key_list': 'test_exception',
+            "test_key0": 0,
+            "test_key_list": "test_exception",
         }
 
         self.assertRaises(Exception, sum_value_dictionaries, d, d)
 
-    
     def test_sum_value_lists(self):
-        self.assertEqual([], sum_value_lists([],[]))
+        self.assertEqual([], sum_value_lists([], []))
         self.assertEqual([1], sum_value_lists([], [1]))
         self.assertEqual([1], sum_value_lists([1], []))
         self.assertEqual([3], sum_value_lists([1], [2]))
