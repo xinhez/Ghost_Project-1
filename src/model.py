@@ -147,6 +147,10 @@ class Model(nn.Module):
             ]
 
             self.discriminator_fake_outputs = [
+                discriminator(self.translations[i][i].detach()) for i, discriminator in enumerate(self.discriminators)
+            ]
+
+            self.generator_outputs = [
                 discriminator(self.translations[i][i]) for i, discriminator in enumerate(self.discriminators)
             ]
 

@@ -247,7 +247,16 @@ class DiscriminatorLoss(Loss):
     name = 'discriminator'
     based_on_discriminator = True
     def __call__(self, model):
-        raise Exception("Not Implemented!")
+        loss = 0
+
+        for real_output in model.discriminator_real_outputs:
+            loss += F.binary_cross_entropy(real_output, torch.ones_like(real_output,  device=model.device_in_use))
+            
+        for fake_output in model.discriminator_fake_outputs:
+            loss += F.binary_cross_entropy(fake_output, torch.zeros_like(fake_output, device=model.device_in_use))
+
+        loss /= model.n_modality
+        loss *= self.weight
         return loss, None
 
 
@@ -255,7 +264,13 @@ class GeneratorLoss(Loss):
     name = 'generator'
     based_on_discriminator = True
     def __call__(self, model):
-        raise Exception("Not Implemented!")
+        loss = 0
+
+        for generator_output in model.generator_outputs:
+            loss += F.binary_cross_entropy(generator_output, torch.ones_like(generator_output, device=model.device_in_use))
+
+        loss /= model.n_modality
+        loss *= self.weight
         return loss, None
 
 
@@ -263,11 +278,13 @@ class ReconstructionLoss(Loss):
     name = 'reconstruction'
     def __call__(self, model):
         loss = 0
+
         for modality_index, (translations, modality) in enumerate(zip(model.translations, model.modalities)):
             reconstruction = translations[modality_index]
             loss += Loss.compute_distance(
                 model.config.encoders[modality_index].is_binary_input, modality, reconstruction
             )
+
         loss /= model.n_modality
         loss *= self.weight
         return loss, None

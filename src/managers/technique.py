@@ -10,13 +10,14 @@ class DefaultTechnique(NamedObject):
     @staticmethod
     def get_default_config(data):
         latent_size                = 64
-        discriminator_output_size  = 32
+        discriminator_output_size  = 1
         autoencoder_hidden_sizes   = [64, 64]
         discriminator_hidden_sizes = [64]
         n_head                     = 1
         fusion_method              = WeightedMeanFuser.name
         cluster_hidden_sizes       = [100]
         n_autoencoder_layer        = 1 + len(autoencoder_hidden_sizes)
+        n_discriminator_layer      = 1 + len(discriminator_hidden_sizes)
 
         return ModelConfig(
             input_sizes   = data.modality_sizes, 
@@ -41,11 +42,10 @@ class DefaultTechnique(NamedObject):
                     is_binary_input = False,
                     activations     = [
                         ActivationConfig(method=SigmoidActivation.name) 
-                        if n_layer + 1 == n_autoencoder_layer and data.binary_modality_flags[modality_index] else  
-                            None
-                            if (n_layer + 1 == n_autoencoder_layer and 
-                                not data.positive_modality_flags[modality_index]) else
-                                ActivationConfig(method=ReLUActivation.name)
+                            if n_layer + 1 == n_autoencoder_layer and data.binary_modality_flags[modality_index] else  
+                        None
+                            if (n_layer + 1 == n_autoencoder_layer and not data.positive_modality_flags[modality_index]) else
+                        ActivationConfig(method=ReLUActivation.name)
                         for n_layer in range(n_autoencoder_layer)
                     ],
                     use_batch_norms = [
@@ -61,6 +61,12 @@ class DefaultTechnique(NamedObject):
                     output_size     = discriminator_output_size,
                     hidden_sizes    = discriminator_hidden_sizes,
                     is_binary_input = False,
+                    activations     = [
+                        ActivationConfig(method=SigmoidActivation.name) 
+                            if n_layer + 1 == n_discriminator_layer else 
+                        ActivationConfig(method=ReLUActivation.name)
+                        for n_layer in range(n_discriminator_layer)
+                    ],
                 ) 
                 for input_size in data.modality_sizes
             ],
