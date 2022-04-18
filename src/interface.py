@@ -362,7 +362,11 @@ class UnitedNet:
         )
 
     def _start_writer(self):
-        self.writer = tf.summary.create_file_writer(self.tensorboard_path)
+        if self.tensorboard_path is not None:
+            self.writer = tf.summary.create_file_writer(self.tensorboard_path)
+        else:
+            self.writer = None
 
     def _close_writer(self):
-        self.writer.close()
+        if self.writer is not None:
+            self.writer.close()
