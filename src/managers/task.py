@@ -354,11 +354,10 @@ class BaseTask(AlternativelyNamedObject):
                         writer=writer,
                     )
 
+                checkpoint_model_name = None
                 if checkpoint > 0:
                     if epoch % checkpoint == 0:
                         checkpoint_model_name = f"epoch_{epoch}.pt"
-                else:
-                    checkpoint_model_name = None
 
                 with torch.no_grad():
                     self.run_through_data(
