@@ -73,13 +73,14 @@ class BaseSchedule(AlternativelyNamedObject):
             return False
 
     def log_losses(self, writer, losses, epoch):
-        with writer.as_default():
-            for term in losses:
-                tf.summary.scalar(
-                    f"{self.model_path}/{term}",
-                    losses[term].detach().cpu().numpy(),
-                    step=epoch,
-                )
+        if writer is not None:
+            with writer.as_default():
+                for term in losses:
+                    tf.summary.scalar(
+                        f"{self.model_path}/{term}",
+                        losses[term].detach().cpu().numpy(),
+                        step=epoch,
+                    )
 
     def save_model(self, model, name="best.pt"):
         if self.model_path is None:
@@ -123,6 +124,7 @@ class CustomizedSchedule(BaseSchedule):
 
 class ClassificationSchedule(BaseSchedule):
     name = "classification"
+    best_loss_term = CrossEntropyLoss.name
     loss_configs = [
         LossConfig(name=CrossEntropyLoss.name),
         LossConfig(name=ReconstructionLoss.name),
@@ -137,9 +139,26 @@ class ClassificationSchedule(BaseSchedule):
 
 
 class ClassificationFinetuneSchedule(BaseSchedule):
-    name = "classification_finetune"
+    name = "classification(finetune)"
+    best_loss_term = CrossEntropyLoss.name
     loss_configs = [
         LossConfig(name=CrossEntropyLoss.name),
+    ]
+    optimizer_modules = [
+        ModuleNames.encoders,
+        ModuleNames.fusers,
+        ModuleNames.projectors,
+        ModuleNames.clusters,
+    ]
+
+
+class ClassificationTransferSchedule(BaseSchedule):
+    name = "classification(transfer)"
+    best_loss_term = CrossEntropyLoss.name
+    loss_configs = [
+        LossConfig(name=CrossEntropyLoss.name),
+        LossConfig(name=ContrastiveLoss.name),
+        LossConfig(name=ReconstructionLoss.name),
     ]
     optimizer_modules = [
         ModuleNames.encoders,
@@ -164,7 +183,21 @@ class ClusteringSchedule(BaseSchedule):
 
 
 class ClusteringFinetuneSchedule(BaseSchedule):
-    name = "clustering_finetune"
+    name = "clustering(finetune)"
+    loss_configs = [
+        LossConfig(name=SelfEntropyLoss.name),
+        LossConfig(name=DDCLoss.name),
+        LossConfig(name=ReconstructionLoss.name),
+    ]
+    optimizer_modules = [
+        ModuleNames.fusers,
+        ModuleNames.projectors,
+        ModuleNames.clusters,
+    ]
+
+
+class ClusteringTransferSchedule(BaseSchedule):
+    name = "clustering(transfer)"
     loss_configs = [
         LossConfig(name=SelfEntropyLoss.name),
         LossConfig(name=DDCLoss.name),
@@ -179,6 +212,7 @@ class ClusteringFinetuneSchedule(BaseSchedule):
 
 class TranslationSchedule(BaseSchedule):
     name = "translation"
+    best_loss_term = ReconstructionLoss.name
     loss_configs = [
         LossConfig(name=ContrastiveLoss.name),
         LossConfig(name=ReconstructionLoss.name),
@@ -194,7 +228,8 @@ class TranslationSchedule(BaseSchedule):
 
 
 class TranslationFinetuneSchedule(BaseSchedule):
-    name = "translation_finetune"
+    name = "translation(finetune)"
+    best_loss_term = ReconstructionLoss.name
     loss_configs = [
         LossConfig(name=ReconstructionLoss.name),
         LossConfig(name=TranslationLoss.name),
@@ -206,14 +241,31 @@ class TranslationFinetuneSchedule(BaseSchedule):
     ]
 
 
+class TranslationTransferSchedule(BaseSchedule):
+    name = "translation(transfer)"
+    best_loss_term = ReconstructionLoss.name
+    loss_configs = [
+        LossConfig(name=ReconstructionLoss.name),
+        LossConfig(name=TranslationLoss.name),
+        LossConfig(name=ContrastiveLoss.name)
+    ]
+    optimizer_modules = [
+        ModuleNames.encoders,
+        ModuleNames.decoders,
+        ModuleNames.discriminators,
+    ]
+
+
 class LatentBatchAlignmentSchedule(BaseSchedule):
     name = "latent_batch_alignment"
+    best_loss_term = LatentMMDLoss.name
     loss_configs = [LossConfig(name=LatentMMDLoss.name)]
     optimizer_modules = [ModuleNames.encoders]
 
 
 class ReconstructionBatchAlignmentSchedule(BaseSchedule):
     name = "reconstruction_batch_alignment"
+    best_loss_term = ReconstructionMMDLoss.name
     loss_configs = [LossConfig(name=ReconstructionMMDLoss.name)]
     optimizer_modules = [
         ModuleNames.encoders,
@@ -234,10 +286,13 @@ class ScheduleManager(ObjectManager):
         CustomizedSchedule,
         ClassificationSchedule,
         ClassificationFinetuneSchedule,
+        ClassificationTransferSchedule,
         ClusteringSchedule,
         ClusteringFinetuneSchedule,
+        ClusteringTransferSchedule,
         TranslationSchedule,
         TranslationFinetuneSchedule,
+        TranslationTransferSchedule,
         LatentBatchAlignmentSchedule,
         ReconstructionBatchAlignmentSchedule,
     ]

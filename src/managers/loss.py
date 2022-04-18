@@ -31,7 +31,7 @@ class LatentMMDLoss(BaseLoss):
 
     def __init__(self, config, model):
         super().__init__(config, model)
-        self.weight = config.weight or 0.01
+        self.weight = config.weight or 0.001
 
     @staticmethod
     def _pairwise_dists(x1, x2):
@@ -145,7 +145,7 @@ class SelfEntropyLoss(BaseLoss):
 
     def __init__(self, config, model):
         super().__init__(config, model)
-        self.weight = 0.1
+        self.weight = config.weight or 0.1
 
     def __call__(self, model):
         eps = 1e-8
@@ -389,6 +389,9 @@ class ContrastiveLoss(BaseLoss):
 class DiscriminatorLoss(BaseLoss):
     name = "discriminator"
     based_on_discriminator = True
+    def __init__(self, config, model):
+        super().__init__(config, model)
+        self.weight = config.weight or 0.5
 
     def __call__(self, model):
         loss = 0
@@ -413,6 +416,9 @@ class DiscriminatorLoss(BaseLoss):
 class GeneratorLoss(BaseLoss):
     name = "generator"
     based_on_discriminator = True
+    def __init__(self, config, model):
+        super().__init__(config, model)
+        self.weight = config.weight or 0.5
 
     def __call__(self, model):
         loss = 0
