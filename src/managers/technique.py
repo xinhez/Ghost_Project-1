@@ -10,12 +10,14 @@ class DefaultTechnique(NamedObject):
     @staticmethod
     def get_default_config(data):
         latent_size = 64
-        discriminator_output_size = 1
+        hidden_size = 100
+
         autoencoder_hidden_sizes = [64, 64]
         discriminator_hidden_sizes = [64]
+
         n_head = 1
         fusion_method = WeightedMeanFuser.name
-        cluster_hidden_sizes = [100]
+
         n_autoencoder_layer = 1 + len(autoencoder_hidden_sizes)
         n_discriminator_layer = 1 + len(discriminator_hidden_sizes)
 
@@ -39,7 +41,6 @@ class DefaultTechnique(NamedObject):
                     input_size=latent_size,
                     output_size=input_size,
                     hidden_sizes=list(reversed(autoencoder_hidden_sizes)),
-                    is_binary_input=False,
                     activations=[
                         ActivationConfig(method=SigmoidActivation.name)
                         if n_layer + 1 == n_autoencoder_layer
@@ -62,9 +63,8 @@ class DefaultTechnique(NamedObject):
             discriminators=[
                 MLPConfig(
                     input_size=input_size,
-                    output_size=discriminator_output_size,
+                    output_size=1,
                     hidden_sizes=discriminator_hidden_sizes,
-                    is_binary_input=False,
                     activations=[
                         ActivationConfig(method=SigmoidActivation.name)
                         if n_layer + 1 == n_discriminator_layer
@@ -81,12 +81,17 @@ class DefaultTechnique(NamedObject):
                 )
                 for _ in range(n_head)
             ],
-            clusters=[
+            projectors=[
                 MLPConfig(
                     input_size=latent_size,
+                    output_size=hidden_size,
+                )
+                for _ in range(n_head)
+            ],
+            clusters=[
+                MLPConfig(
+                    input_size=hidden_size,
                     output_size=data.n_label,
-                    hidden_sizes=cluster_hidden_sizes,
-                    is_binary_input=False,
                 )
                 for _ in range(n_head)
             ],

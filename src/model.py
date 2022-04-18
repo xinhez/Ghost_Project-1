@@ -23,6 +23,7 @@ class ModuleNames:
     decoders = "decoders"
     discriminators = "discriminators"
     fusers = "fusers"
+    projectors = "projectors"
     clusters = "clusters"
 
 
@@ -57,6 +58,7 @@ class Model(nn.Module):
                     MLP, config.discriminators
                 ),
                 ModuleNames.fusers: create_module_list(FuserManager, config.fusers),
+                ModuleNames.projectors: create_module_list(MLP, config.projectors),
                 ModuleNames.clusters: create_module_list(MLP, config.clusters),
             }
         )
@@ -95,6 +97,10 @@ class Model(nn.Module):
     @property
     def fusers(self):
         return self.modules_by_names[ModuleNames.fusers]
+
+    @property
+    def projectors(self):
+        return self.modules_by_names[ModuleNames.projectors]
 
     @property
     def clusters(self):
@@ -167,9 +173,16 @@ class Model(nn.Module):
         if cluster_requested:
             self.fused_latents = [fuser(self.latents) for fuser in self.fusers]
 
+            self.hiddens = [
+                projector(fused_latent)
+                for (projector, fused_latent) in zip(
+                    self.projectors, self.fused_latents
+                )
+            ]
+
             self.cluster_outputs = [
-                cluster(fused_latent)
-                for (cluster, fused_latent) in zip(self.clusters, self.fused_latents)
+                cluster(hidden)
+                for (cluster, hidden) in zip(self.clusters, self.hiddens)
             ]
 
             return (

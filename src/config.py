@@ -57,8 +57,8 @@ class MLPConfig(Config):
     # ===== sizes =====
     input_size: int
     output_size: int
-    hidden_sizes: List[int]
-    is_binary_input: bool
+    hidden_sizes: List[int] = []
+    is_binary_input: bool = False
     # ===== parameters =====
     activations: type_or_typelist(none_or_type(ActivationConfig)) = None
     dropouts: type_or_typelist(float) = 0
@@ -118,6 +118,7 @@ class ModelConfig(Config):
     decoders: List[MLPConfig]
     discriminators: List[MLPConfig]
     fusers: List[FuserConfig]
+    projectors: List[MLPConfig]
     clusters: List[MLPConfig]
 
 

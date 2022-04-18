@@ -9,7 +9,7 @@ from src.managers.base import AlternativelyNamedObject, ObjectManager
 from src.managers.loss import LossManager
 from src.managers.loss import LatentMMDLoss, ReconstructionMMDLoss
 from src.managers.loss import CrossEntropyLoss
-from src.managers.loss import SelfEntropyLoss, DDC1Loss, DDC3Loss
+from src.managers.loss import SelfEntropyLoss, DDCLoss
 from src.managers.loss import (
     ContrastiveLoss,
     DiscriminatorLoss,
@@ -22,6 +22,9 @@ from src.utils import sum_value_lists
 
 class BaseSchedule(AlternativelyNamedObject):
     name = "Schedule"
+    best_loss_term = None
+    loss_configs = None
+    optimizer_modules = None
 
     def __init__(self, logger, model, config, model_path, task, method, order):
         self.logger = logger
@@ -55,7 +58,7 @@ class BaseSchedule(AlternativelyNamedObject):
             [loss.based_on_discriminator for loss in self.losses]
         )
 
-        self.best_loss_term = config.best_loss_term
+        self.best_loss_term = self.best_loss_term or config.best_loss_term
         self.best_loss = np.inf
 
     def check_and_update_best_loss(self, losses):
@@ -116,8 +119,6 @@ class BaseSchedule(AlternativelyNamedObject):
 
 class CustomizedSchedule(BaseSchedule):
     name = "customized"
-    loss_configs = None
-    optimizer_modules = None
 
 
 class ClassificationSchedule(BaseSchedule):
@@ -127,7 +128,12 @@ class ClassificationSchedule(BaseSchedule):
         LossConfig(name=ReconstructionLoss.name),
         LossConfig(name=ContrastiveLoss.name),
     ]
-    optimizer_modules = [ModuleNames.encoders, ModuleNames.fusers, ModuleNames.clusters]
+    optimizer_modules = [
+        ModuleNames.encoders,
+        ModuleNames.fusers,
+        ModuleNames.projectors,
+        ModuleNames.clusters,
+    ]
 
 
 class ClassificationFinetuneSchedule(BaseSchedule):
@@ -135,29 +141,40 @@ class ClassificationFinetuneSchedule(BaseSchedule):
     loss_configs = [
         LossConfig(name=CrossEntropyLoss.name),
     ]
-    optimizer_modules = [ModuleNames.encoders, ModuleNames.fusers, ModuleNames.clusters]
+    optimizer_modules = [
+        ModuleNames.encoders,
+        ModuleNames.fusers,
+        ModuleNames.projectors,
+        ModuleNames.clusters,
+    ]
 
 
 class ClusteringSchedule(BaseSchedule):
     name = "clustering"
     loss_configs = [
         LossConfig(name=SelfEntropyLoss.name),
-        LossConfig(name=DDC1Loss.name),
-        LossConfig(name=DDC3Loss.name),
+        LossConfig(name=DDCLoss.name),
         LossConfig(name=ReconstructionLoss.name),
     ]
-    optimizer_modules = [ModuleNames.fusers, ModuleNames.clusters]
+    optimizer_modules = [
+        ModuleNames.fusers,
+        ModuleNames.projectors,
+        ModuleNames.clusters,
+    ]
 
 
 class ClusteringFinetuneSchedule(BaseSchedule):
     name = "clustering_finetune"
     loss_configs = [
         LossConfig(name=SelfEntropyLoss.name),
-        LossConfig(name=DDC1Loss.name),
-        LossConfig(name=DDC3Loss.name),
+        LossConfig(name=DDCLoss.name),
         LossConfig(name=ReconstructionLoss.name),
     ]
-    optimizer_modules = [ModuleNames.fusers, ModuleNames.clusters]
+    optimizer_modules = [
+        ModuleNames.fusers,
+        ModuleNames.projectors,
+        ModuleNames.clusters,
+    ]
 
 
 class TranslationSchedule(BaseSchedule):
@@ -216,8 +233,11 @@ class ScheduleManager(ObjectManager):
     constructors = [
         CustomizedSchedule,
         ClassificationSchedule,
+        ClassificationFinetuneSchedule,
         ClusteringSchedule,
+        ClusteringFinetuneSchedule,
         TranslationSchedule,
+        TranslationFinetuneSchedule,
         LatentBatchAlignmentSchedule,
         ReconstructionBatchAlignmentSchedule,
     ]
