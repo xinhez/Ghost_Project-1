@@ -46,6 +46,7 @@ class UnitedNet:
         label_key: str,
         batch_index: int = None,
         batch_key: str = None,
+        device: str = 'cpu',
     ) -> None:
         """\
         Save or override existing training dataset. 
@@ -55,6 +56,7 @@ class UnitedNet:
             TrainingData.name, adatas, batch_index, batch_key, label_index, label_key
         )
         self.model = create_model_from_data(self.data)
+        self.set_device(device)
 
     def train(
         self,
@@ -252,7 +254,7 @@ class UnitedNet:
 
     def load_model(self, path: str) -> None:
         """\
-        Load pretrained model parameters from the given path.
+        Create a new model with all the model parameters from the given path (usually from checkpoint).
 
         path
             The absolute path to the desired location.
