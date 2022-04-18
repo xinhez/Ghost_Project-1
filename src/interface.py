@@ -35,9 +35,10 @@ class UnitedNet:
         log_path="saved_log",
         model_path="saved_models",
         tensorboard_path="saved_tensorboards",
+        verbose=True,
     ):
         self.set_device(device)
-        self.set_log_path(log_path)
+        self.set_log_path(log_path, verbose)
         self.set_model_path(model_path)
         self.set_tensorboard_path(tensorboard_path)
 
@@ -287,8 +288,8 @@ class UnitedNet:
         self.model = self.model.to(device=self.device)
         self.model.set_device_in_use(self.device)
 
-    def set_log_path(self, log_path):
-        self.logger = Logger(log_path)
+    def set_log_path(self, log_path, verbose):
+        self.logger = Logger(log_path, verbose)
 
     def set_model_path(self, model_path):
         self.model_path = model_path

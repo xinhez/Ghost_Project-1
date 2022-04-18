@@ -4,11 +4,13 @@ from tabulate import tabulate
 class Logger:
     tab = "    "
 
-    def __init__(self, save_log_path=None):
+    def __init__(self, save_log_path, verbose):
         self.save_log_path = save_log_path
+        self.verbose = verbose
 
     def print_or_save(self, message):
-        print(message)
+        if self.verbose:
+            print(message)
         if self.save_log_path is not None:
             file = open(self.save_log_path, "a")
             file.write(f"{message}\n")
