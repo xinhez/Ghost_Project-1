@@ -21,9 +21,6 @@ from src.managers.task import BaseTask, TaskManager
 from src.utils import set_random_seed
 
 
-set_random_seed(numpy, random, torch)
-
-
 class UnitedNet:
     """\
     API Interface
@@ -36,7 +33,9 @@ class UnitedNet:
         model_path="saved_models",
         tensorboard_path="saved_tensorboards",
         verbose=True,
-    ):
+        random_seed=3407,
+    ): 
+        self.set_random_seed(random_seed)
         self.set_device(device)
         self.set_log_path(log_path, verbose)
         self.set_model_path(model_path)
@@ -98,6 +97,7 @@ class UnitedNet:
             save_best_model,
             checkpoint,
             self.writer,
+            self.random_seed,
         )
 
         self._close_writer()
@@ -140,6 +140,7 @@ class UnitedNet:
             save_best_model,
             checkpoint,
             self.writer,
+            self.random_seed,
         )
 
         self._close_writer()
@@ -197,6 +198,7 @@ class UnitedNet:
             save_best_model,
             checkpoint,
             self.writer,
+            self.random_seed,
         )
 
         self._close_writer()
@@ -293,6 +295,10 @@ class UnitedNet:
 
     def set_model_path(self, model_path):
         self.model_path = model_path
+
+    def set_random_seed(self, random_seed):
+        self.random_seed = random_seed
+        set_random_seed(numpy, random, torch, self.random_seed)
 
     def set_tensorboard_path(self, tensorboard_path):
         self.tensorboard_path = tensorboard_path

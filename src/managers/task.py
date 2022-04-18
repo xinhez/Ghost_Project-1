@@ -182,10 +182,11 @@ class BaseTask(AlternativelyNamedObject):
         save_best_model,
         checkpoint,
         writer,
+        random_seed,
     ):
-        dataloader = data.create_dataloader(model, shuffle=True, batch_size=batch_size)
+        dataloader = data.create_dataloader(model, shuffle=True, batch_size=batch_size, random_seed=random_seed)
         dataloader_validate = data_validate.create_dataloader(
-            model, shuffle=True, batch_size=batch_size
+            model, shuffle=True, batch_size=batch_size, random_seed=random_seed
         )
 
         model.train()
@@ -236,6 +237,7 @@ class BaseTask(AlternativelyNamedObject):
         save_best_model,
         checkpoint,
         writer,
+        random_seed,
     ):
         logger.log_method_start(self.train.__name__, self.name)
 
@@ -257,6 +259,7 @@ class BaseTask(AlternativelyNamedObject):
             save_best_model,
             checkpoint,
             writer,
+            random_seed,
         )
 
     def finetune(
@@ -272,6 +275,7 @@ class BaseTask(AlternativelyNamedObject):
         save_best_model,
         checkpoint,
         writer,
+        random_seed,
     ):
         logger.log_method_start(self.finetune.__name__, self.name)
 
@@ -293,6 +297,7 @@ class BaseTask(AlternativelyNamedObject):
             save_best_model,
             checkpoint,
             writer,
+            random_seed,
         )
 
     def transfer(
@@ -309,6 +314,7 @@ class BaseTask(AlternativelyNamedObject):
         save_best_model,
         checkpoint,
         writer,
+        random_seed,
     ):
         logger.log_method_start(self.transfer.__name__, self.name)
 
@@ -320,12 +326,12 @@ class BaseTask(AlternativelyNamedObject):
             self.transfer.__name__,
         )
 
-        dataloader = data.create_dataloader(model, shuffle=True, batch_size=batch_size)
+        dataloader = data.create_dataloader(model, shuffle=True, batch_size=batch_size, random_seed=random_seed)
         dataloader_train_and_transfer = data.create_joint_dataloader(
             data_transfer, model, shuffle=True, batch_size=batch_size
         )
         datalodaer_validate = data_validate.create_dataloader(
-            model, shuffle=True, batch_size=batch_size
+            model, shuffle=True, batch_size=batch_size, random_seed=random_seed,
         )
 
         for epoch in range(n_epoch):

@@ -1,8 +1,6 @@
 import numpy as np
 import torch
 
-RANDOM_SEED = 3407
-
 
 def amplify_value_dictionary_by_sample_size(dictionary, sample_size):
     amplified_dictionary = {}
@@ -75,7 +73,7 @@ def move_tensor_list_to_cpu(tensors):
     return cpu_tensors
 
 
-def set_random_seed(n, r, t, seed=RANDOM_SEED):
+def set_random_seed(n, r, t, seed):
     t.manual_seed(seed)
     t.cuda.manual_seed(seed)
     t.cuda.manual_seed_all(seed)
