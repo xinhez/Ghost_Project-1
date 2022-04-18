@@ -1,3 +1,6 @@
+from tabulate import tabulate
+
+
 class Logger:
     tab = "    "
 
@@ -20,10 +23,19 @@ class Logger:
 
     def log_metrics(self, metrics):
         self.print_or_save(f"{self.tab}Metrics")
-        messages = [
-            f"{self.tab}{self.tab}{key}: {metrics[key]}"
-            for key in sorted(metrics.keys())
-        ]
+        messages = []
+        for key in sorted(metrics.keys()):
+            if isinstance(metrics[key], list):
+                header = f"{self.tab}{self.tab}{key}: "
+                metric = "\n".join(
+                    [
+                        " " * len(header) + line
+                        for line in tabulate(metrics[key]).split("\n")
+                    ]
+                ).strip()
+                messages.append(header + metric)
+            else:
+                messages.append(f"{self.tab}{self.tab}{key}: {metrics[key]}")
         self.print_or_save("\n".join(messages))
 
     def log_epoch_start(self, epoch, n_epoch):

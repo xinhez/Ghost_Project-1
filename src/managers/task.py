@@ -1,6 +1,6 @@
 import torch
 
-from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score
+from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score, r2_score
 from src.managers.data import DataManager
 
 import src.utils as utils
@@ -110,15 +110,22 @@ class BaseTask(AlternativelyNamedObject):
 
     def evaluate_outputs(self, logger, dataset, outputs):
         labels = dataset.labels
-        translations, cluster_outputs, *_ = outputs
+        translations_outputs, cluster_outputs, *_ = outputs
         predictions = cluster_outputs.argmax(axis=1)
 
-        # raise Exception("translations Not Implemented!")
+        r2s = [
+            [
+                r2_score(modality.numpy(), translation.numpy())
+                for translation in translations
+            ]
+            for modality, translations in zip(dataset.modalities, translations_outputs)
+        ]
         accuracy = torch.sum(labels == predictions).data / predictions.shape[0]
 
         labels = labels.numpy()
         predictions = predictions.numpy()
         metrics = {
+            "r2": r2s,
             "acc": accuracy,
             "ari": adjusted_rand_score(labels, predictions),
             "nmi": normalized_mutual_info_score(
