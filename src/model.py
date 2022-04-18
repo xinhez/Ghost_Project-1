@@ -12,6 +12,8 @@ from src.models.optimizer import Optimizer
 
 BEST_HEAD = "best_head"
 CONFIG = "config"
+DATA_LABEL_ENCODER = "data_label_encoder"
+DATA_BATCH_ENCODER = "data_batch_encoder"
 WEIGHTS = "weights"
 
 
@@ -208,6 +210,8 @@ class Model(nn.Module):
         state_dict = {
             WEIGHTS: self.state_dict(),
             CONFIG: self.config,
+            DATA_BATCH_ENCODER: self.data_batch_encoder.get_state(),
+            DATA_LABEL_ENCODER: self.data_label_encoder.get_state(),
         }
         torch.save(state_dict, path)
 
@@ -231,4 +235,6 @@ def load_model_from_path(path):
     state_dict = torch.load(path)
     model = Model(state_dict[CONFIG])
     model.load_state_dict(state_dict[WEIGHTS])
+    model.data_batch_encoder.set_state(state_dict[DATA_BATCH_ENCODER])
+    model.data_label_encoder.set_state(state_dict[DATA_LABEL_ENCODER])
     return model

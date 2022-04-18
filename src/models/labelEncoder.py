@@ -6,6 +6,12 @@ class LabelEncoder:
     def n_label(self):
         return len(self.labels_to_indices)
 
+    def get_state(self):
+        return self.labels_to_indices
+
+    def set_state(self, state):
+        self.labels_to_indices = state
+
     def update_new_labels(self, new_labels):
         new_labels_to_indices = {
             label: index + self.n_label for index, label in enumerate(new_labels)
