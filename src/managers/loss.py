@@ -66,7 +66,7 @@ class LatentMMDLoss(BaseLoss):
             ref_batch = 0
             ref_indices = torch.where(batches == ref_batch)[0]
             n_ref = ref_indices.shape[0]
-            ref_var = torch.sum(K[ref_indices].t()[ref_indices]) / (n_ref**2)
+            ref_var = torch.sum(K[ref_indices].t()[ref_indices]) / (n_ref ** 2)
 
             # nonreference
             for nonref_batch in batches.unique():
@@ -75,11 +75,10 @@ class LatentMMDLoss(BaseLoss):
                     n_nonref = nonref_indices.shape[0]
 
                     nonref_var = torch.sum(K[nonref_indices].t()[nonref_indices]) / (
-                        n_nonref**2
+                        n_nonref ** 2
                     )
                     covar = (
-                        torch.sum(K[ref_indices].t()[
-                                  nonref_indices]) / n_ref / n_nonref
+                        torch.sum(K[ref_indices].t()[nonref_indices]) / n_ref / n_nonref
                     )
 
                     loss += torch.abs(ref_var + nonref_var - 2 * covar)
@@ -128,8 +127,7 @@ class ReconstructionMMDLoss(BaseLoss):
                         nonref_gt_std + eps
                     )
 
-                    loss += F.mse_loss(nonref_rc_normalized,
-                                       nonref_gt_normalized)
+                    loss += F.mse_loss(nonref_rc_normalized, nonref_gt_normalized)
 
         loss /= model.n_modality
         loss *= self.weight
@@ -196,14 +194,18 @@ class DDCLoss(BaseLoss):
         Cauchy-Schwarz divergence.
         """
         nom = torch.t(A) @ K @ A
-        dnom_squared = torch.unsqueeze(torch.diagonal(
-            nom), -1) @ torch.unsqueeze(torch.diagonal(nom), 0)
+        dnom_squared = torch.unsqueeze(torch.diagonal(nom), -1) @ torch.unsqueeze(
+            torch.diagonal(nom), 0
+        )
 
         nom = DDCLoss._atleast_epsilon(nom)
         dnom_squared = DDCLoss._atleast_epsilon(dnom_squared, eps=1e-18)
 
-        d = 2 / (n_clusters * (n_clusters - 1)) * \
-            DDCLoss.triu(nom / torch.sqrt(dnom_squared))
+        d = (
+            2
+            / (n_clusters * (n_clusters - 1))
+            * DDCLoss.triu(nom / torch.sqrt(dnom_squared))
+        )
         return d
 
     @staticmethod
@@ -216,9 +218,8 @@ class DDCLoss(BaseLoss):
         sigma2 = rel_sigma * torch.median(dist)
         # Disable gradient for sigma
         sigma2 = sigma2.detach()
-        sigma2 = torch.where(sigma2 < min_sigma,
-                             sigma2.new_tensor(min_sigma), sigma2)
-        k = torch.exp(- dist / (2 * sigma2))
+        sigma2 = torch.where(sigma2 < min_sigma, sigma2.new_tensor(min_sigma), sigma2)
+        k = torch.exp(-dist / (2 * sigma2))
         return k
 
     @staticmethod
@@ -231,9 +232,8 @@ class DDCLoss(BaseLoss):
         sigma2 = rel_sigma * torch.median(dist)
         # Disable gradient for sigma
         sigma2 = sigma2.detach()
-        sigma2 = torch.where(sigma2 < min_sigma,
-                             sigma2.new_tensor(min_sigma), sigma2)
-        k = torch.exp(- dist / (2 * sigma2))
+        sigma2 = torch.where(sigma2 < min_sigma, sigma2.new_tensor(min_sigma), sigma2)
+        k = torch.exp(-dist / (2 * sigma2))
         return k
 
     @staticmethod
@@ -242,8 +242,8 @@ class DDCLoss(BaseLoss):
         Pairwise distance between rows of X and rows of Y.
         """
         xyT = X @ torch.t(Y)
-        x2 = torch.sum(X**2, dim=1, keepdim=True)
-        y2 = torch.sum(Y**2, dim=1, keepdim=True)
+        x2 = torch.sum(X ** 2, dim=1, keepdim=True)
+        y2 = torch.sum(Y ** 2, dim=1, keepdim=True)
         d = x2 - 2 * xyT + torch.t(y2)
         return d
 
@@ -261,8 +261,7 @@ class DDCLoss(BaseLoss):
         for hidden, cluster_outputs in zip(model.hiddens, model.cluster_outputs):
             hidden_kernel = DDCLoss.vector_kernel(hidden)
             # L_1 loss
-            loss = DDCLoss.d_cs(
-                cluster_outputs, hidden_kernel, model.n_output)
+            loss = DDCLoss.d_cs(cluster_outputs, hidden_kernel, model.n_output)
 
             # L_3 loss
             m = torch.exp(-DDCLoss.cdist(cluster_outputs, self.eye))
@@ -291,9 +290,7 @@ class CrossEntropyLoss(BaseLoss):
 
         for cluster_outputs in model.cluster_outputs:
             loss = F.cross_entropy(
-                cluster_outputs,
-                model.labels,
-                weight=self.class_weights,
+                cluster_outputs, model.labels, weight=self.class_weights,
             )
 
             loss /= model.n_head
@@ -389,6 +386,7 @@ class ContrastiveLoss(BaseLoss):
 class DiscriminatorLoss(BaseLoss):
     name = "discriminator"
     based_on_discriminator = True
+
     def __init__(self, config, model):
         super().__init__(config, model)
         self.weight = config.weight or 0.5
@@ -398,14 +396,12 @@ class DiscriminatorLoss(BaseLoss):
 
         for real_output in model.discriminator_real_outputs:
             loss += F.binary_cross_entropy(
-                real_output, torch.ones_like(
-                    real_output, device=model.device_in_use)
+                real_output, torch.ones_like(real_output, device=model.device_in_use)
             )
 
         for fake_output in model.discriminator_fake_outputs:
             loss += F.binary_cross_entropy(
-                fake_output, torch.zeros_like(
-                    fake_output, device=model.device_in_use)
+                fake_output, torch.zeros_like(fake_output, device=model.device_in_use)
             )
 
         loss /= model.n_modality
@@ -416,6 +412,7 @@ class DiscriminatorLoss(BaseLoss):
 class GeneratorLoss(BaseLoss):
     name = "generator"
     based_on_discriminator = True
+
     def __init__(self, config, model):
         super().__init__(config, model)
         self.weight = config.weight or 0.5
@@ -470,7 +467,7 @@ class TranslationLoss(BaseLoss):
                         modality,
                         translation,
                     )
-        loss /= model.n_modality**2 - model.n_modality
+        loss /= model.n_modality ** 2 - model.n_modality
         loss *= self.weight
         return loss, None
 

@@ -10,6 +10,10 @@ from src.models.labelEncoder import LabelEncoder
 from src.models.mlp import MLP
 from src.models.optimizer import Optimizer
 
+BEST_HEAD = "best_head"
+CONFIG = "config"
+WEIGHTS = "weights"
+
 
 def create_module_list(constructor, configs):
     """\
@@ -65,7 +69,7 @@ class Model(nn.Module):
 
         self.optimizers_by_schedule = {}
 
-        self.best_head = 0
+        self.register_buffer(BEST_HEAD, torch.tensor(0, dtype=torch.long))
 
         self.apply(Model.kaiming_init_weights)
 
@@ -201,7 +205,11 @@ class Model(nn.Module):
         path
             The absolute path to the desired location.
         """
-        torch.save(self, path)
+        state_dict = {
+            WEIGHTS: self.state_dict(),
+            CONFIG: self.config,
+        }
+        torch.save(state_dict, path)
 
 
 # ==================== Model Generator ====================
@@ -220,4 +228,7 @@ def load_model_from_path(path):
     path
         The absolute path to the desired location.
     """
-    return torch.load(path)
+    state_dict = torch.load(path)
+    model = Model(state_dict[CONFIG])
+    model.load_state_dict(state_dict[WEIGHTS])
+    return model

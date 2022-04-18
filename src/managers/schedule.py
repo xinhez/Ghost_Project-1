@@ -247,7 +247,7 @@ class TranslationTransferSchedule(BaseSchedule):
     loss_configs = [
         LossConfig(name=ReconstructionLoss.name),
         LossConfig(name=TranslationLoss.name),
-        LossConfig(name=ContrastiveLoss.name)
+        LossConfig(name=ContrastiveLoss.name),
     ]
     optimizer_modules = [
         ModuleNames.encoders,

@@ -75,24 +75,15 @@ class DefaultTechnique(NamedObject):
                 for input_size in data.modality_sizes
             ],
             fusers=[
-                FuserConfig(
-                    method=fusion_method,
-                    n_modality=data.n_modality,
-                )
+                FuserConfig(method=fusion_method, n_modality=data.n_modality,)
                 for _ in range(n_head)
             ],
             projectors=[
-                MLPConfig(
-                    input_size=latent_size,
-                    output_size=hidden_size,
-                )
+                MLPConfig(input_size=latent_size, output_size=hidden_size,)
                 for _ in range(n_head)
             ],
             clusters=[
-                MLPConfig(
-                    input_size=hidden_size,
-                    output_size=data.n_label,
-                )
+                MLPConfig(input_size=hidden_size, output_size=data.n_label,)
                 for _ in range(n_head)
             ],
         )

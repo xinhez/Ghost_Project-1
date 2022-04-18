@@ -31,10 +31,12 @@ class UnitedNet:
 
     def __init__(
         self,
+        device="cpu",
         log_path="saved_log",
         model_path="saved_models",
         tensorboard_path="saved_tensorboards",
     ):
+        self.set_device(device)
         self.set_log_path(log_path)
         self.set_model_path(model_path)
         self.set_tensorboard_path(tensorboard_path)
@@ -46,7 +48,6 @@ class UnitedNet:
         label_key: str,
         batch_index: int = None,
         batch_key: str = None,
-        device: str = 'cpu',
     ) -> None:
         """\
         Save or override existing training dataset. 
@@ -56,7 +57,7 @@ class UnitedNet:
             TrainingData.name, adatas, batch_index, batch_key, label_index, label_key
         )
         self.model = create_model_from_data(self.data)
-        self.set_device(device)
+        self.set_model_device()
 
     def train(
         self,
@@ -260,6 +261,7 @@ class UnitedNet:
             The absolute path to the desired location.
         """
         self.model = load_model_from_path(path)
+        self.set_model_device()
 
     def save_model(self, path: str) -> None:
         """\
@@ -278,9 +280,12 @@ class UnitedNet:
         self.model.update_config(config)
 
     def set_device(self, device: str = "cpu"):
+        self.device = device
+
+    def set_model_device(self):
         self._check_model_exist()
-        self.model.set_device_in_use(device)
-        self.model = self.model.to(device=device)
+        self.model = self.model.to(device=self.device)
+        self.model.set_device_in_use(self.device)
 
     def set_log_path(self, log_path):
         self.logger = Logger(log_path)
