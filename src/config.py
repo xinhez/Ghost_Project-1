@@ -63,7 +63,7 @@ class MLPConfig(Config):
     activations: type_or_typelist(none_or_type(ActivationConfig)) = None
     dropouts: type_or_typelist(float) = 0
     use_biases: type_or_typelist(bool) = False
-    use_batch_norms: type_or_typelist(bool) = True
+    use_batch_norms: type_or_typelist(bool) = False
 
     @property
     def n_layer(self):
@@ -89,6 +89,7 @@ class LossConfig(Config):
     weight: none_or_type(float) = None
     tau: float = 0.1
     sampling_ratio: float = 0.25
+    sigmas: List[int] = [10, 15, 20, 50]
 
 
 # ==================== Schedule Config Definition ====================

@@ -104,10 +104,6 @@ class Data(NamedObject):
         if batch_or_batches is None:
             raise Exception("Unknow reason caused None batches.")
 
-    def validate_labels(self, labels_or_None):
-        if labels_or_None is None:
-            raise Exception(f"{self.name} data must have non-None labels.")
-
     def create_dataset(self, model):
         batches = model.data_batch_encoder.fit_transform(self.batches)
         labels = (
@@ -204,16 +200,11 @@ class InferenceData(Data):
 class TrainingData(Data):
     name = "training"
 
-    def __init__(self, modalities, batches_or_batch, labels_or_None, *args):
-        self.validate_labels(labels_or_None)
-        super().__init__(modalities, batches_or_batch, labels_or_None, *args)
-
-
-class TransferenceData(TrainingData):
+class TransferenceData(Data):
     name = "transference"
 
 
-class ValidationData(TrainingData):
+class ValidationData(Data):
     name = "validation"
 
 

@@ -32,6 +32,7 @@ class LatentMMDLoss(BaseLoss):
     def __init__(self, config, model):
         super().__init__(config, model)
         self.weight = config.weight or 0.001
+        self.sigmas = torch.tensor(config.sigmas, device=model.device_in_use)
 
     @staticmethod
     def _pairwise_dists(x1, x2):
@@ -41,16 +42,13 @@ class LatentMMDLoss(BaseLoss):
         D = r1 - 2 * torch.matmul(x1, x2.t()) + r2.t()
         return D
 
-    @staticmethod
-    def _gaussian_kernel_matrix(dist, device):
+    def _gaussian_kernel_matrix(self, dist):
         """Multi-scale RBF kernel."""
-        sigmas = torch.tensor([10, 15, 20, 50], device=device)
-
-        beta = 1.0 / (2.0 * (torch.unsqueeze(sigmas, 1)))
+        beta = 1.0 / (2.0 * (torch.unsqueeze(self.sigmas, 1)))
 
         s = torch.matmul(beta, torch.reshape(dist, (1, -1)))
 
-        return torch.reshape(torch.sum(torch.exp(-s), dim=0), dist.shape) / len(sigmas)
+        return torch.reshape(torch.sum(torch.exp(-s), dim=0), dist.shape) / len(self.sigmas)
 
     def __call__(self, model):
         loss = 0
@@ -60,7 +58,7 @@ class LatentMMDLoss(BaseLoss):
             e = latent / torch.mean(latent)
             K = LatentMMDLoss._pairwise_dists(e, e)
             K = K / torch.max(K)
-            K = LatentMMDLoss._gaussian_kernel_matrix(K, model.device_in_use)
+            K = self._gaussian_kernel_matrix(K)
 
             # reference batch
             ref_batch = 0
@@ -395,12 +393,12 @@ class DiscriminatorLoss(BaseLoss):
         loss = 0
 
         for real_output in model.discriminator_real_outputs:
-            loss += F.binary_cross_entropy(
+            loss += F.mse_loss(
                 real_output, torch.ones_like(real_output, device=model.device_in_use)
             )
 
         for fake_output in model.discriminator_fake_outputs:
-            loss += F.binary_cross_entropy(
+            loss += F.mse_loss(
                 fake_output, torch.zeros_like(fake_output, device=model.device_in_use)
             )
 

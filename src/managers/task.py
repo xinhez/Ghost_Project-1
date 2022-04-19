@@ -7,7 +7,7 @@ import src.utils as utils
 
 from src.config import ScheduleConfig
 from src.managers.base import AlternativelyNamedObject, ObjectManager
-from src.managers.schedule import ScheduleManager
+from src.managers.schedule import ClassificationTransferSchedule, ScheduleManager
 from src.managers.schedule import (
     ClassificationSchedule,
     ClusteringSchedule,
@@ -17,6 +17,11 @@ from src.managers.schedule import (
     ClassificationFinetuneSchedule,
     ClusteringFinetuneSchedule,
     TranslationFinetuneSchedule,
+)
+from src.managers.schedule import (
+    ClassificationTransferSchedule,
+    ClusteringTransferSchedule,
+    TranslationTransferSchedule,
 )
 from src.managers.schedule import (
     LatentBatchAlignmentSchedule,
@@ -400,8 +405,8 @@ class CrossModelPredictionTask(BaseTask):
     transfer_schedule_configs = [
         ScheduleConfig(name=LatentBatchAlignmentSchedule.name),
         ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
-        ScheduleConfig(name=ClassificationSchedule.name),
-        ScheduleConfig(name=TranslationSchedule.name),
+        ScheduleConfig(name=ClassificationTransferSchedule.name),
+        ScheduleConfig(name=TranslationTransferSchedule.name),
     ]
 
 
@@ -420,8 +425,8 @@ class SupervisedGroupIdentificationTask(BaseTask):
     transfer_schedule_configs = [
         ScheduleConfig(name=LatentBatchAlignmentSchedule.name),
         ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
-        ScheduleConfig(name=TranslationSchedule.name),
-        ScheduleConfig(name=ClassificationSchedule.name),
+        ScheduleConfig(name=TranslationTransferSchedule.name),
+        ScheduleConfig(name=ClassificationTransferSchedule.name),
     ]
 
 
@@ -440,8 +445,8 @@ class UnsupervisedGroupIdentificationTask(BaseTask):
     transfer_schedule_configs = [
         ScheduleConfig(name=LatentBatchAlignmentSchedule.name),
         ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
-        ScheduleConfig(name=TranslationSchedule.name),
-        ScheduleConfig(name=ClusteringSchedule.name),
+        ScheduleConfig(name=TranslationTransferSchedule.name),
+        ScheduleConfig(name=ClusteringTransferSchedule.name),
     ]
 
 

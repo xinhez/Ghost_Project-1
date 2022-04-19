@@ -138,34 +138,15 @@ class ClassificationSchedule(BaseSchedule):
     ]
 
 
-class ClassificationFinetuneSchedule(BaseSchedule):
+class ClassificationFinetuneSchedule(ClassificationSchedule):
     name = "classification(finetune)"
-    best_loss_term = CrossEntropyLoss.name
     loss_configs = [
         LossConfig(name=CrossEntropyLoss.name),
     ]
-    optimizer_modules = [
-        ModuleNames.encoders,
-        ModuleNames.fusers,
-        ModuleNames.projectors,
-        ModuleNames.clusters,
-    ]
 
 
-class ClassificationTransferSchedule(BaseSchedule):
+class ClassificationTransferSchedule(ClassificationSchedule):
     name = "classification(transfer)"
-    best_loss_term = CrossEntropyLoss.name
-    loss_configs = [
-        LossConfig(name=CrossEntropyLoss.name),
-        LossConfig(name=ContrastiveLoss.name),
-        LossConfig(name=ReconstructionLoss.name),
-    ]
-    optimizer_modules = [
-        ModuleNames.encoders,
-        ModuleNames.fusers,
-        ModuleNames.projectors,
-        ModuleNames.clusters,
-    ]
 
 
 class ClusteringSchedule(BaseSchedule):
@@ -182,7 +163,7 @@ class ClusteringSchedule(BaseSchedule):
     ]
 
 
-class ClusteringFinetuneSchedule(BaseSchedule):
+class ClusteringFinetuneSchedule(ClusteringSchedule):
     name = "clustering(finetune)"
     loss_configs = [
         LossConfig(name=SelfEntropyLoss.name),
@@ -196,7 +177,7 @@ class ClusteringFinetuneSchedule(BaseSchedule):
     ]
 
 
-class ClusteringTransferSchedule(BaseSchedule):
+class ClusteringTransferSchedule(ClusteringSchedule):
     name = "clustering(transfer)"
     loss_configs = [
         LossConfig(name=SelfEntropyLoss.name),
@@ -212,7 +193,7 @@ class ClusteringTransferSchedule(BaseSchedule):
 
 class TranslationSchedule(BaseSchedule):
     name = "translation"
-    best_loss_term = ReconstructionLoss.name
+    best_loss_term = TranslationLoss.name
     loss_configs = [
         LossConfig(name=ContrastiveLoss.name),
         LossConfig(name=ReconstructionLoss.name),
@@ -227,32 +208,20 @@ class TranslationSchedule(BaseSchedule):
     ]
 
 
-class TranslationFinetuneSchedule(BaseSchedule):
+class TranslationFinetuneSchedule(TranslationSchedule):
     name = "translation(finetune)"
-    best_loss_term = ReconstructionLoss.name
     loss_configs = [
         LossConfig(name=ReconstructionLoss.name),
         LossConfig(name=TranslationLoss.name),
     ]
-    optimizer_modules = [
-        ModuleNames.encoders,
-        ModuleNames.decoders,
-        ModuleNames.discriminators,
-    ]
 
 
-class TranslationTransferSchedule(BaseSchedule):
+class TranslationTransferSchedule(TranslationSchedule):
     name = "translation(transfer)"
-    best_loss_term = ReconstructionLoss.name
     loss_configs = [
         LossConfig(name=ReconstructionLoss.name),
         LossConfig(name=TranslationLoss.name),
         LossConfig(name=ContrastiveLoss.name),
-    ]
-    optimizer_modules = [
-        ModuleNames.encoders,
-        ModuleNames.decoders,
-        ModuleNames.discriminators,
     ]
 
 
@@ -270,7 +239,6 @@ class ReconstructionBatchAlignmentSchedule(BaseSchedule):
     optimizer_modules = [
         ModuleNames.encoders,
         ModuleNames.decoders,
-        ModuleNames.discriminators,
     ]
 
 

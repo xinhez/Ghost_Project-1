@@ -48,6 +48,7 @@ class UnitedNet:
         label_key: str,
         batch_index: int = None,
         batch_key: str = None,
+        technique: str = None,
     ) -> None:
         """\
         Save or override existing training dataset. 
