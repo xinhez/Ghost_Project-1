@@ -1,12 +1,14 @@
+from pandas import concat
 import torch
 
 from unittest import TestCase
 
 from src.utils import (
     average_dictionary_values_by_sample_size,
+    concat_tensor_lists,
     count_unique,
     convert_to_lowercase,
-    combine_tensor_lists,
+    inplace_combine_tensor_lists,
 )
 from src.utils import sum_value_dictionaries, sum_value_lists
 
@@ -39,23 +41,67 @@ class TestUtils(TestCase):
         self.assertEqual("abca", convert_to_lowercase("AbCa"))
 
     def test_combine_tensor_lists(self):
-        self.assertEqual([], combine_tensor_lists([], []))
+        t00 = torch.tensor([1, 10, 100])
+        t01 = torch.tensor([2, 20, 200])
+        t10 = torch.tensor([3, 30, 300])
+        t11 = torch.tensor([4, 40, 400])
+        o = torch.tensor([9, 90, 900, 9000])
+        l = torch.tensor([11, 12, 13, 21, 22, 23])
+        list0 = [[[t00, t01], [t10, t11]], o, l]
 
-        l = [torch.Tensor([1])]
-        self.assertEqual(l, combine_tensor_lists([], l))
-        self.assertEqual(l, combine_tensor_lists(l, []))
+        t002 = torch.tensor([5, 50, 500])
+        t012 = torch.tensor([6, 60, 600])
+        t102 = torch.tensor([7, 70, 700])
+        t112 = torch.tensor([8, 80, 800])
+        o2 = torch.tensor([902, 903, 904, 905])
+        l2 = torch.tensor([14, 15, 16, 24, 25, 26])
+        list1 = [[[t002, t012], [t102, t112]], o2, l2]
 
-        l0 = [torch.Tensor([1])]
-        l1 = [[]]
-        self.assertEqual(l0, combine_tensor_lists(l0, l1))
+        list0_out = [[[[t00], [t01]], [[t10], [t11]]], [o], [l]]
+        list1_out = [[[[t00, t002], [t01, t012]], [[t10, t102], [t11, t112]]], [o, o2], [l, l2]]
 
-        l0 = [torch.Tensor([1]), []]
-        l1 = [[], torch.Tensor([2])]
-        expected_l = [torch.Tensor([1]), torch.Tensor([2])]
-        self.assertEqual(expected_l, combine_tensor_lists(l0, l1))
+        a = []
+        inplace_combine_tensor_lists(a, list0)
+        self.assertEqual(a, list0_out)
 
-        l = [1]
-        self.assertRaises(Exception, combine_tensor_lists, l, l)
+        inplace_combine_tensor_lists(a, list1)
+        self.assertEqual(a, list1_out)
+
+    def test_concat_tensor_lists(self):
+        t00 = torch.tensor([1, 10, 100])
+        t01 = torch.tensor([2, 20, 200])
+        t10 = torch.tensor([3, 30, 300])
+        t11 = torch.tensor([4, 40, 400])
+        o = torch.tensor([9, 90, 900, 9000])
+        l = torch.tensor([11, 12, 13, 21, 22, 23])
+        list0 = [[[t00, t01], [t10, t11]], o, l]
+
+        t002 = torch.tensor([5, 50, 500])
+        t012 = torch.tensor([6, 60, 600])
+        t102 = torch.tensor([7, 70, 700])
+        t112 = torch.tensor([8, 80, 800])
+        o2 = torch.tensor([902, 903, 904, 905])
+        l2 = torch.tensor([14, 15, 16, 24, 25, 26])
+        list1 = [[[t002, t012], [t102, t112]], o2, l2]
+
+        lists = []
+        inplace_combine_tensor_lists(lists, list0)
+        inplace_combine_tensor_lists(lists, list1)
+        
+        t003 = torch.tensor([1, 10, 100, 5, 50, 500])
+        t013 = torch.tensor([2, 20, 200, 6, 60, 600])
+        t103 = torch.tensor([3, 30, 300, 7, 70, 700])
+        t113 = torch.tensor([4, 40, 400, 8, 80, 800])
+        o3 = torch.tensor([9, 90, 900, 9000, 902, 903, 904, 905])
+        l3 = torch.tensor([11, 12, 13, 21, 22, 23, 14, 15, 16, 24, 25, 26])
+
+        lists_out = [[[t003, t013], [t103, t113]], o3, l3]
+        self.assertTrue(torch.equal(concat_tensor_lists(lists)[0][0][0], lists_out[0][0][0]))
+        self.assertTrue(torch.equal(concat_tensor_lists(lists)[0][0][1], lists_out[0][0][1]))
+        self.assertTrue(torch.equal(concat_tensor_lists(lists)[0][1][0], lists_out[0][1][0]))
+        self.assertTrue(torch.equal(concat_tensor_lists(lists)[0][1][1], lists_out[0][1][1]))
+        self.assertTrue(torch.equal(concat_tensor_lists(lists)[1], lists_out[1]))
+        self.assertTrue(torch.equal(concat_tensor_lists(lists)[2], lists_out[2]))
 
     def test_combine_value_dictionaries(self):
         self.assertEqual({}, sum_value_dictionaries({}, {}))
@@ -77,13 +123,6 @@ class TestUtils(TestCase):
             "test_key1": 1,
         }
         self.assertEqual(expected_d, sum_value_dictionaries(d0, d1))
-
-        d = {
-            "test_key0": 0,
-            "test_key_list": "test_exception",
-        }
-
-        self.assertRaises(Exception, sum_value_dictionaries, d, d)
 
     def test_sum_value_lists(self):
         self.assertEqual([], sum_value_lists([], []))

@@ -95,7 +95,7 @@ class BaseTask(AlternativelyNamedObject):
 
             if infer_model:
                 outputs = utils.move_tensor_list_to_cpu(outputs)
-                all_outputs = utils.combine_tensor_lists(all_outputs, outputs)
+                utils.inplace_combine_tensor_lists(all_outputs, outputs)
 
         if all_losses:
             all_losses = utils.average_dictionary_values_by_sample_size(
@@ -111,7 +111,7 @@ class BaseTask(AlternativelyNamedObject):
         if checkpoint_model_name is not None:
             schedule.save_model(model, checkpoint_model_name)
 
-        return all_outputs
+        return utils.concat_tensor_lists(all_outputs)
 
     def evaluate_outputs(self, logger, dataset, outputs):
         labels = dataset.labels

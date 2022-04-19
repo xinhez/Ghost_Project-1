@@ -34,33 +34,36 @@ def convert_to_lowercase(item):
         return item
 
 
-def combine_tensor_lists(list0, list1):
+def inplace_combine_tensor_lists(lists, new_list):
     """\
-    Combine lists of tensors.
-    This method does not check types if at least one of the supplied lists is empty.
+    In place add a new (nested) tensor list to current collections.
     """
-    if len(list0) == 0:
-        return list1
-    elif len(list1) == 0:
-        return list0
-    elif len(list0) != len(list1):
-        raise Exception("Please only combine lists of the same length.")
+    if len(lists) == 0:
+        for new_l in new_list:
+            if isinstance(new_l, list):
+                l = []
+                inplace_combine_tensor_lists(l, new_l)
+                lists.append(l)
+            else:
+                lists.append([new_l])
+    else:
+        for l, new_l in zip(lists, new_list):
+            if isinstance(new_l, list):
+                inplace_combine_tensor_lists(l, new_l)
+            else:
+                l.append(new_l)
 
-    combined_lists = []
-    for l0, l1 in zip(list0, list1):
-        if isinstance(l0, list) or isinstance(l1, list):
-            combined_lists.append(combine_tensor_lists(l0, l1))
-        elif not torch.is_tensor(l0):
-            raise Exception(
-                f"Type {type(l0)} is not supported in combine_tensor_lists."
-            )
-        elif not torch.is_tensor(l1):
-            raise Exception(
-                f"Type {type(l1)} is not supported in combine_tensor_lists."
-            )
+
+def concat_tensor_lists(lists):
+    new_lists = []
+    for l in lists:
+        if len(l) == 0:
+            raise Exception("Cannot concatenate empty tensor list.")
+        if isinstance(l[0], list):
+            new_lists.append(concat_tensor_lists(l))
         else:
-            combined_lists.append(torch.cat([l0, l1], dim=0))
-    return combined_lists
+            new_lists.append(torch.cat(l, dim=0))
+    return new_lists
 
 
 def move_tensor_list_to_cpu(tensors):

@@ -18,3 +18,6 @@ conda install tensorflow-estimator=2.6.0
 
 ### Tensorboard Support 
 `tensorboard --logdir=saved_runs`
+
+### Run Unittest
+`python -m unittest test/run_all.py`
