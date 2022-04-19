@@ -34,7 +34,7 @@ class UnitedNet:
         tensorboard_path="saved_tensorboards",
         verbose=True,
         random_seed=3407,
-    ): 
+    ):
         self.set_random_seed(random_seed)
         self.set_device(device)
         self.set_log_path(log_path, verbose)

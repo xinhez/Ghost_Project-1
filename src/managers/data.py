@@ -122,19 +122,27 @@ class Data(NamedObject):
             dataset,
             batch_size=batch_size,
             shuffle=shuffle,
-            worker_init_fn=lambda _: utils.set_random_seed(np, random, torch, random_seed),
+            worker_init_fn=lambda _: utils.set_random_seed(
+                np, random, torch, random_seed
+            ),
             generator=g,
         )
 
     def create_dataloader(self, model, shuffle, batch_size=512, random_seed=3407):
         dataset = self.create_dataset(model)
-        return Data.create_dataloader_from_dataset(dataset, shuffle, batch_size, random_seed)
+        return Data.create_dataloader_from_dataset(
+            dataset, shuffle, batch_size, random_seed
+        )
 
-    def create_joint_dataloader(self, data, model, shuffle, batch_size=512, random_seed=3407):
+    def create_joint_dataloader(
+        self, data, model, shuffle, batch_size=512, random_seed=3407
+    ):
         dataset = D.ConcatDataset(
             [self.create_dataset(model), data.create_dataset(model)]
         )
-        return Data.create_dataloader_from_dataset(dataset, shuffle, batch_size, random_seed)
+        return Data.create_dataloader_from_dataset(
+            dataset, shuffle, batch_size, random_seed
+        )
 
 
 class EvaluationData(Data):
@@ -199,6 +207,7 @@ class InferenceData(Data):
 
 class TrainingData(Data):
     name = "training"
+
 
 class TransferenceData(Data):
     name = "transference"

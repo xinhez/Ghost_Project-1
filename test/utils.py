@@ -58,7 +58,11 @@ class TestUtils(TestCase):
         list1 = [[[t002, t012], [t102, t112]], o2, l2]
 
         list0_out = [[[[t00], [t01]], [[t10], [t11]]], [o], [l]]
-        list1_out = [[[[t00, t002], [t01, t012]], [[t10, t102], [t11, t112]]], [o, o2], [l, l2]]
+        list1_out = [
+            [[[t00, t002], [t01, t012]], [[t10, t102], [t11, t112]]],
+            [o, o2],
+            [l, l2],
+        ]
 
         a = []
         inplace_combine_tensor_lists(a, list0)
@@ -87,7 +91,7 @@ class TestUtils(TestCase):
         lists = []
         inplace_combine_tensor_lists(lists, list0)
         inplace_combine_tensor_lists(lists, list1)
-        
+
         t003 = torch.tensor([1, 10, 100, 5, 50, 500])
         t013 = torch.tensor([2, 20, 200, 6, 60, 600])
         t103 = torch.tensor([3, 30, 300, 7, 70, 700])
@@ -96,10 +100,18 @@ class TestUtils(TestCase):
         l3 = torch.tensor([11, 12, 13, 21, 22, 23, 14, 15, 16, 24, 25, 26])
 
         lists_out = [[[t003, t013], [t103, t113]], o3, l3]
-        self.assertTrue(torch.equal(concat_tensor_lists(lists)[0][0][0], lists_out[0][0][0]))
-        self.assertTrue(torch.equal(concat_tensor_lists(lists)[0][0][1], lists_out[0][0][1]))
-        self.assertTrue(torch.equal(concat_tensor_lists(lists)[0][1][0], lists_out[0][1][0]))
-        self.assertTrue(torch.equal(concat_tensor_lists(lists)[0][1][1], lists_out[0][1][1]))
+        self.assertTrue(
+            torch.equal(concat_tensor_lists(lists)[0][0][0], lists_out[0][0][0])
+        )
+        self.assertTrue(
+            torch.equal(concat_tensor_lists(lists)[0][0][1], lists_out[0][0][1])
+        )
+        self.assertTrue(
+            torch.equal(concat_tensor_lists(lists)[0][1][0], lists_out[0][1][0])
+        )
+        self.assertTrue(
+            torch.equal(concat_tensor_lists(lists)[0][1][1], lists_out[0][1][1])
+        )
         self.assertTrue(torch.equal(concat_tensor_lists(lists)[1], lists_out[1]))
         self.assertTrue(torch.equal(concat_tensor_lists(lists)[2], lists_out[2]))
 

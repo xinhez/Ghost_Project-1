@@ -189,7 +189,9 @@ class BaseTask(AlternativelyNamedObject):
         writer,
         random_seed,
     ):
-        dataloader = data.create_dataloader(model, shuffle=True, batch_size=batch_size, random_seed=random_seed)
+        dataloader = data.create_dataloader(
+            model, shuffle=True, batch_size=batch_size, random_seed=random_seed
+        )
         dataloader_validate = data_validate.create_dataloader(
             model, shuffle=True, batch_size=batch_size, random_seed=random_seed
         )
@@ -331,7 +333,9 @@ class BaseTask(AlternativelyNamedObject):
             self.transfer.__name__,
         )
 
-        dataloader = data.create_dataloader(model, shuffle=True, batch_size=batch_size, random_seed=random_seed)
+        dataloader = data.create_dataloader(
+            model, shuffle=True, batch_size=batch_size, random_seed=random_seed
+        )
         dataloader_train_and_transfer = data.create_joint_dataloader(
             data_transfer, model, shuffle=True, batch_size=batch_size
         )

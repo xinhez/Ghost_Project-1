@@ -48,7 +48,9 @@ class LatentMMDLoss(BaseLoss):
 
         s = torch.matmul(beta, torch.reshape(dist, (1, -1)))
 
-        return torch.reshape(torch.sum(torch.exp(-s), dim=0), dist.shape) / len(self.sigmas)
+        return torch.reshape(torch.sum(torch.exp(-s), dim=0), dist.shape) / len(
+            self.sigmas
+        )
 
     def __call__(self, model):
         loss = 0
