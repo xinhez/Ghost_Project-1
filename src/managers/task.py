@@ -1,4 +1,5 @@
 import torch
+import torch.utils.data as D
 
 from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score, r2_score
 from src.managers.data import DataManager
@@ -113,7 +114,12 @@ class BaseTask(AlternativelyNamedObject):
 
         return utils.concat_tensor_lists(all_outputs)
 
-    def evaluate_outputs(self, logger, dataset, outputs):
+    def evaluate_outputs(self, logger, dataloader, outputs):
+        if not isinstance(dataloader.sampler, D.SequentialSampler):
+            raise Exception(
+                "Please only evaluate outputs with non-shuffling dataloader."
+            )
+        dataset = dataloader.dataset
         labels = dataset.labels
         translations_outputs, cluster_outputs, *_ = outputs
         predictions = cluster_outputs.argmax(axis=1)
@@ -151,7 +157,7 @@ class BaseTask(AlternativelyNamedObject):
             outputs = self.run_through_data(
                 logger, model, dataloader_eval, infer_model=True
             )
-        metrics = self.evaluate_outputs(logger, dataloader_eval.dataset, outputs)
+        metrics = self.evaluate_outputs(logger, dataloader_eval, outputs)
 
         return metrics
 
