@@ -53,5 +53,5 @@ class Logger:
         self.log_message(message)
 
     def log_method_start(self, method, task=None):
-        message = f"{method.upper()} {''if task is None else 'Task:'} {'' if task is None else task}"
+        message = f"\n{method.upper()} {''if task is None else 'Task:'} {'' if task is None else task}"
         self.log_message(message)
