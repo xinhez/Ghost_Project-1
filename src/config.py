@@ -87,9 +87,10 @@ class OptimizerConfig(Config):
 class LossConfig(Config):
     name: str
     weight: none_or_type(float) = None
-    tau: float = 0.1
-    sampling_ratio: float = 0.25
-    sigmas: List[int] = [10, 15, 20, 50]
+    tau: none_or_type(float) = None
+    sampling_ratio: none_or_type(float) = None
+    sigmas: none_or_typelist(int) = None
+    ref_batch: none_or_type(int) = None
 
 
 # ==================== Schedule Config Definition ====================

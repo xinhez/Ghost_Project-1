@@ -66,7 +66,7 @@ class BaseSchedule(AlternativelyNamedObject):
             loss = sum(losses.values())
         else:
             loss = losses[self.best_loss_term]
-        if loss < self.best_loss:
+        if 0 < loss < self.best_loss:
             self.best_loss = loss
             return True
         else:
