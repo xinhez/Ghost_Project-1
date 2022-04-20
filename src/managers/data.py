@@ -39,12 +39,11 @@ class Data(NamedObject):
 
     technique = DefaultTechnique.name
 
-    def __init__(self, modalities, batches_or_batch, labels_or_None, technique, *_):
+    def __init__(self, modalities, batches_or_batch, labels_or_None, *_):
         self.validate_batches(batches_or_batch)
         self.save_modalities(modalities)
         self.save_batches(batches_or_batch)
         self.save_labels(labels_or_None)
-        self.technique = technique
 
     @staticmethod
     def is_binary_modality(modality):
@@ -186,7 +185,6 @@ class InferenceData(Data):
         modalities,
         batches_or_batch,
         labels_or_None,
-        technique,
         modalities_provided,
         modality_sizes,
     ):
@@ -202,7 +200,6 @@ class InferenceData(Data):
             modalities,
             batches_or_batch,
             labels_or_None,
-            technique,
             modalities_provided,
             modality_sizes,
         )
@@ -260,7 +257,6 @@ class DataManager(ObjectManager):
         label_key=None,
         modalities_provided=[],
         modality_sizes=[],
-        technique=None,
     ):
         DataManager.validate_anndatas(
             data_purpose, adatas, batch_index, batch_key, label_index, label_key
@@ -280,7 +276,6 @@ class DataManager(ObjectManager):
             modalities,
             batches_or_batch,
             labels_or_None,
-            technique,
             modalities_provided,
             modality_sizes,
         )

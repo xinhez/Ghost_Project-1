@@ -220,14 +220,6 @@ class Model(nn.Module):
 
 
 # ==================== Model Generator ====================
-def create_model_from_data(data):
-    """\
-    Create a new model based on the given dataset.
-    """
-    technique = TechniqueManager.get_constructor_by_name(data.technique)()
-    return Model(technique.get_default_config(data))
-
-
 def load_model_from_path(path):
     """\
     Create a new model with model parameters from the given path.

@@ -6,9 +6,9 @@ import tensorflow as tf
 
 from typing import List, Union
 
-from src.config import ModelConfig, TaskConfig
+from src.config import ModelConfig, TaskConfig, TechniqueConfig
 from src.logger import Logger
-from src.model import create_model_from_data, load_model_from_path, Model
+from src.model import load_model_from_path, Model
 from src.managers.data import Data, DataManager
 from src.managers.data import (
     EvaluationData,
@@ -18,7 +18,7 @@ from src.managers.data import (
     ValidationData,
 )
 from src.managers.task import BaseTask, TaskManager
-from src.managers.technique import DefaultTechnique
+from src.managers.technique import DefaultTechnique, TechniqueManager
 from src.utils import set_random_seed
 
 
@@ -62,9 +62,9 @@ class UnitedNet:
             batch_key,
             label_index,
             label_key,
-            technique=technique,
         )
-        self.model = create_model_from_data(self.data)
+        self.technique = TechniqueManager.get_constructor_by_name(technique)(self.data)
+        self.model = Model(self.technique.get_model_config())
         self.set_model_device()
 
     def train(
@@ -295,6 +295,10 @@ class UnitedNet:
         self._check_model_exist()
 
         self.model.update_config(config)
+
+    def update_technique_config(self, config: TechniqueConfig) -> None:
+        self.technique.update_config(config)
+        self.model = Model(self.technique.get_model_config())
 
     def set_device(self, device: str = "cpu"):
         self.device = device

@@ -103,6 +103,18 @@ class ScheduleConfig(Config):
 
 # ==================== Task Config Definition ====================
 class TaskConfig(Config):
+    latent_size: none_or_type(int) = None
+    hidden_size: none_or_type(int) = None
+    autoencoder_hidden_sizes: none_or_typelist(int) = None
+    discriminator_hidden_sizes: none_or_typelist(int) = None
+    autoencoder_use_batch_norms: none_or_type(bool) = None 
+    autoencoder_use_layer_norms: none_or_type(bool) = None 
+    n_head: none_or_type(int) = None
+    fusion_method: none_or_type(str) = None
+
+
+# ==================== Technique Config Definition ====================
+class TechniqueConfig(Config):
     train_schedules: List[ScheduleConfig] = None
     finetune_schedules: List[ScheduleConfig] = None
     transfer_schedules: List[ScheduleConfig] = None
