@@ -16,6 +16,7 @@ class MLP(nn.Module):
             self.add_linear_layer(input_sizes[i], output_sizes[i], config.use_biases, i)
             self.add_dropout_layer(config.dropouts, i)
             self.add_batch_norms_layer(config.use_batch_norms, i, output_sizes[i])
+            self.add_layer_norms_layer(config.use_layer_norms, i, output_sizes[i])
             self.add_activation_layer(config.activations, i)
 
     def add_linear_layer(self, input_size, output_size, use_biases, i):
@@ -35,6 +36,12 @@ class MLP(nn.Module):
             isinstance(use_batch_norms, bool) and use_batch_norms
         ):
             self.layers.append(nn.BatchNorm1d(output_size))
+
+    def add_layer_norms_layer(self, use_layer_norms, i, output_size):
+        if (isinstance(use_layer_norms, list) and use_layer_norms[i]) or (
+            isinstance(use_layer_norms, bool) and use_layer_norms
+        ):
+            self.layers.append(nn.LayerNorm(output_size))
 
     def add_activation_layer(self, activations, i):
         if isinstance(activations, list) and activations[i] is not None:

@@ -64,6 +64,7 @@ class MLPConfig(Config):
     dropouts: type_or_typelist(float) = 0
     use_biases: type_or_typelist(bool) = False
     use_batch_norms: type_or_typelist(bool) = False
+    use_layer_norms: type_or_typelist(bool) = False
 
     @property
     def n_layer(self):

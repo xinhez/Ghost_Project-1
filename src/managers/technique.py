@@ -13,6 +13,9 @@ class DefaultTechnique(NamedObject):
     autoencoder_hidden_sizes = [64, 64]
     discriminator_hidden_sizes = [64]
 
+    autoencoder_use_batch_norms = False
+    autoencoder_use_layer_norms = False
+
     n_head = 1
     fusion_method = WeightedMeanFuser.name
 
@@ -32,6 +35,8 @@ class DefaultTechnique(NamedObject):
                     hidden_sizes=self.autoencoder_hidden_sizes,
                     is_binary_input=data.binary_modality_flags[modality_index],
                     activations=ActivationConfig(method=ReLUActivation.name),
+                    use_batch_norms=self.autoencoder_use_batch_norms,
+                    use_layer_norms=self.autoencoder_use_layer_norms,
                 )
                 for modality_index, input_size in enumerate(data.modality_sizes)
             ],
@@ -53,7 +58,11 @@ class DefaultTechnique(NamedObject):
                         for n_layer in range(n_autoencoder_layer)
                     ],
                     use_batch_norms=[
-                        n_layer + 1 != n_autoencoder_layer
+                        (n_layer + 1 != n_autoencoder_layer) and self.autoencoder_use_batch_norms
+                        for n_layer in range(n_autoencoder_layer)
+                    ],
+                    use_layer_norms=[
+                        (n_layer + 1 != n_autoencoder_layer) and self.autoencoder_use_layer_norms
                         for n_layer in range(n_autoencoder_layer)
                     ],
                 )
@@ -91,9 +100,17 @@ class DefaultTechnique(NamedObject):
 class ATACSeqTechnique(DefaultTechnique):
     name = "atacseq"
 
+    autoencoder_use_batch_norms = True
 
 class DLPFCTechnique(DefaultTechnique):
     name = "dlpfc"
+
+    latent_size = 16
+
+    autoencoder_hidden_sizes = [16, 16]
+    discriminator_hidden_sizes = [16]
+
+    autoencoder_use_layer_norms = True
 
 
 class TechniqueManager(ObjectManager):
