@@ -95,10 +95,6 @@ class ATACSeqTechnique(DefaultTechnique):
 class DLPFCTechnique(DefaultTechnique):
     name = "dlpfc"
     
-    latent_size = 50
-
-    autoencoder_hidden_sizes = [256, 128, 64]
-
 
 class TechniqueManager(ObjectManager):
     name = "techniques"
