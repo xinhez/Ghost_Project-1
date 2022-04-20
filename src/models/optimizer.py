@@ -7,10 +7,10 @@ class Optimizer(nn.Module):
     Optimizer
     """
 
-    def __init__(self, config, parameters):
+    def __init__(self, learning_rate, config, parameters):
         self.parameters = parameters
         self.clip_norm = config.clip_norm
-        self.optimizer = optim.Adam(parameters, lr=config.learning_rate)
+        self.optimizer = optim.Adam(parameters, lr=learning_rate)
         self.scheduler = (
             None
             if config.scheduler is None

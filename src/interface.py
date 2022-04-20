@@ -18,6 +18,7 @@ from src.managers.data import (
     ValidationData,
 )
 from src.managers.task import BaseTask, TaskManager
+from src.managers.technique import DefaultTechnique
 from src.utils import set_random_seed
 
 
@@ -48,14 +49,15 @@ class UnitedNet:
         label_key: str,
         batch_index: int = None,
         batch_key: str = None,
-        technique: str = None,
+        technique: str = DefaultTechnique.name,
     ) -> None:
         """\
         Save or override existing training dataset. 
         If overriding existing training dataset, the model will also be refreshed.
         """
         self.data = DataManager.format_anndatas(
-            TrainingData.name, adatas, batch_index, batch_key, label_index, label_key
+            TrainingData.name, adatas, batch_index, batch_key, label_index, label_key,
+            technique=technique,
         )
         self.model = create_model_from_data(self.data)
         self.set_model_device()
@@ -69,6 +71,7 @@ class UnitedNet:
         batch_index_validate: int = None,
         batch_key_validate: str = None,
         n_epoch: int = 1,
+        learning_rate: float =0.001,
         batch_size: int = 512,
         save_best_model: bool = False,
         checkpoint: int = 0,
@@ -93,6 +96,7 @@ class UnitedNet:
             data_validate,
             batch_size,
             n_epoch,
+            learning_rate,
             self.logger,
             self.model_path,
             save_best_model,
@@ -112,6 +116,7 @@ class UnitedNet:
         batch_index_validate: int = None,
         batch_key_validate: str = None,
         n_epoch: int = 1,
+        learning_rate: float =0.001,
         batch_size: int = 512,
         save_best_model: bool = False,
         checkpoint: int = 0,
@@ -136,6 +141,7 @@ class UnitedNet:
             data_validate,
             batch_size,
             n_epoch,
+            learning_rate,
             self.logger,
             self.model_path,
             save_best_model,
@@ -160,6 +166,7 @@ class UnitedNet:
         batch_index_validate: int = None,
         batch_key_validate: str = None,
         n_epoch: int = 1,
+        learning_rate: float =0.001,
         batch_size: int = 512,
         save_best_model: bool = False,
         checkpoint: int = 0,
@@ -194,6 +201,7 @@ class UnitedNet:
             data_validate,
             batch_size,
             n_epoch,
+            learning_rate,
             self.logger,
             self.model_path,
             save_best_model,

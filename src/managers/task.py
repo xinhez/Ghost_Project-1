@@ -33,13 +33,14 @@ from src.managers.schedule import (
 class BaseTask(AlternativelyNamedObject):
     name = "Task"
 
-    def update_schedules(self, logger, model, schedule_configs, model_path, method):
+    def update_schedules(self, logger, model, learning_rate, schedule_configs, model_path, method):
         if schedule_configs is None:
             raise Exception(f"Please provide {method}_schedules for {self.name} task.")
         self.schedules = [
             ScheduleManager.get_constructor_by_name(config.name)(
                 logger,
                 model,
+                learning_rate, 
                 config,
                 model_path,
                 self.get_short_name(),
@@ -244,6 +245,7 @@ class BaseTask(AlternativelyNamedObject):
         data_validate,
         batch_size,
         n_epoch,
+        learning_rate,
         logger,
         model_path,
         save_best_model,
@@ -256,6 +258,7 @@ class BaseTask(AlternativelyNamedObject):
         self.update_schedules(
             logger,
             model,
+            learning_rate,
             self.train_schedule_configs or config.train_schedules,
             model_path,
             self.train.__name__,
@@ -282,6 +285,7 @@ class BaseTask(AlternativelyNamedObject):
         data_validate,
         batch_size,
         n_epoch,
+        learning_rate,
         logger,
         model_path,
         save_best_model,
@@ -294,6 +298,7 @@ class BaseTask(AlternativelyNamedObject):
         self.update_schedules(
             logger,
             model,
+            learning_rate,
             self.finetune_schedule_configs or config.finetune_schedules,
             model_path,
             self.finetune.__name__,
@@ -321,6 +326,7 @@ class BaseTask(AlternativelyNamedObject):
         data_validate,
         batch_size,
         n_epoch,
+        learning_rate,
         logger,
         model_path,
         save_best_model,
@@ -333,6 +339,7 @@ class BaseTask(AlternativelyNamedObject):
         self.update_schedules(
             logger,
             model,
+            learning_rate,
             self.transfer_schedule_configs or config.transfer_schedules,
             model_path,
             self.transfer.__name__,

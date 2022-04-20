@@ -26,7 +26,7 @@ class BaseSchedule(AlternativelyNamedObject):
     loss_configs = None
     optimizer_modules = None
 
-    def __init__(self, logger, model, config, model_path, task, method, order):
+    def __init__(self, logger, model, learning_rate, config, model_path, task, method, order):
         self.logger = logger
 
         loss_configs = self.loss_configs or config.losses
@@ -43,7 +43,7 @@ class BaseSchedule(AlternativelyNamedObject):
                 f"Please provide optimizer modules for {self.name} schedule."
             )
         model.create_optimizer_for_schedule(
-            config.optimizer, self.name, optimizer_modules
+            learning_rate, config.optimizer, self.name, optimizer_modules
         )
 
         self.order = order

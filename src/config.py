@@ -78,7 +78,6 @@ class SchedulerConfig(Config):
 
 class OptimizerConfig(Config):
     modules: none_or_typelist(str) = None
-    learning_rate: float = 0.001
     clip_norm: none_or_type(float) = 25.0
     scheduler: none_or_type(SchedulerConfig) = None
 

@@ -75,9 +75,10 @@ class Model(nn.Module):
 
         self.apply(Model.kaiming_init_weights)
 
-    def create_optimizer_for_schedule(self, config, schedule_name, module_names):
+    def create_optimizer_for_schedule(self, learning_rate, config, schedule_name, module_names):
         if schedule_name not in self.optimizers_by_schedule:
             optimizer = Optimizer(
+                learning_rate, 
                 config,
                 chain.from_iterable(
                     [

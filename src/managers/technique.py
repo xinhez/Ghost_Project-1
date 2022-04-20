@@ -7,19 +7,18 @@ from src.models.fuser import WeightedMeanFuser
 class DefaultTechnique(NamedObject):
     name = "default"
 
-    @staticmethod
-    def get_default_config(data):
-        latent_size = 64
-        hidden_size = 100
+    latent_size = 64
+    hidden_size = 100
 
-        autoencoder_hidden_sizes = [64, 64]
-        discriminator_hidden_sizes = [64]
+    autoencoder_hidden_sizes = [64, 64]
+    discriminator_hidden_sizes = [64]
 
-        n_head = 1
-        fusion_method = WeightedMeanFuser.name
+    n_head = 1
+    fusion_method = WeightedMeanFuser.name
 
-        n_autoencoder_layer = 1 + len(autoencoder_hidden_sizes)
-        n_discriminator_layer = 1 + len(discriminator_hidden_sizes)
+    def get_default_config(self, data):
+        n_autoencoder_layer = 1 + len(self.autoencoder_hidden_sizes)
+        n_discriminator_layer = 1 + len(self.discriminator_hidden_sizes)
 
         return ModelConfig(
             input_sizes=data.modality_sizes,
@@ -29,8 +28,8 @@ class DefaultTechnique(NamedObject):
             encoders=[
                 MLPConfig(
                     input_size=input_size,
-                    output_size=latent_size,
-                    hidden_sizes=autoencoder_hidden_sizes,
+                    output_size=self.latent_size,
+                    hidden_sizes=self.autoencoder_hidden_sizes,
                     is_binary_input=data.binary_modality_flags[modality_index],
                     activations=ActivationConfig(method=ReLUActivation.name),
                 )
@@ -38,9 +37,9 @@ class DefaultTechnique(NamedObject):
             ],
             decoders=[
                 MLPConfig(
-                    input_size=latent_size,
+                    input_size=self.latent_size,
                     output_size=input_size,
-                    hidden_sizes=list(reversed(autoencoder_hidden_sizes)),
+                    hidden_sizes=list(reversed(self.autoencoder_hidden_sizes)),
                     activations=[
                         ActivationConfig(method=SigmoidActivation.name)
                         if n_layer + 1 == n_autoencoder_layer
@@ -64,7 +63,7 @@ class DefaultTechnique(NamedObject):
                 MLPConfig(
                     input_size=input_size,
                     output_size=1,
-                    hidden_sizes=discriminator_hidden_sizes,
+                    hidden_sizes=self.discriminator_hidden_sizes,
                     activations=[
                         ActivationConfig(method=SigmoidActivation.name)
                         if n_layer + 1 == n_discriminator_layer
@@ -75,20 +74,32 @@ class DefaultTechnique(NamedObject):
                 for input_size in data.modality_sizes
             ],
             fusers=[
-                FuserConfig(method=fusion_method, n_modality=data.n_modality,)
-                for _ in range(n_head)
+                FuserConfig(method=self.fusion_method, n_modality=data.n_modality,)
+                for _ in range(self.n_head)
             ],
             projectors=[
-                MLPConfig(input_size=latent_size, output_size=hidden_size,)
-                for _ in range(n_head)
+                MLPConfig(input_size=self.latent_size, output_size=self.hidden_size,)
+                for _ in range(self.n_head)
             ],
             clusters=[
-                MLPConfig(input_size=hidden_size, output_size=data.n_label,)
-                for _ in range(n_head)
+                MLPConfig(input_size=self.hidden_size, output_size=data.n_label,)
+                for _ in range(self.n_head)
             ],
         )
 
 
+class ATACSeqTechnique(DefaultTechnique):
+    name = "atacseq"
+    
+
+class DLPFCTechnique(DefaultTechnique):
+    name = "dlpfc"
+    
+    latent_size = 50
+
+    autoencoder_hidden_sizes = [256, 128, 64]
+
+
 class TechniqueManager(ObjectManager):
     name = "techniques"
-    constructors = [DefaultTechnique]
+    constructors = [DefaultTechnique, ATACSeqTechnique, DLPFCTechnique]
