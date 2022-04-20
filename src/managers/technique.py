@@ -31,10 +31,18 @@ class DefaultTechnique(NamedObject):
     def update_config(self, config):
         self.latent_size = config.latent_size or self.latent_size
         self.hidden_size = config.hidden_size or self.hidden_size
-        self.autoencoder_hidden_sizes = config.autoencoder_hidden_sizes or self.autoencoder_hidden_sizes
-        self.discriminator_hidden_sizes = config.discriminator_hidden_sizes or self.discriminator_hidden_sizes
-        self.autoencoder_use_batch_norms = config.autoencoder_use_batch_norms or self.autoencoder_use_batch_norms
-        self.autoencoder_use_layer_norms = config.autoencoder_use_layer_norms or self.autoencoder_use_layer_norms
+        self.autoencoder_hidden_sizes = (
+            config.autoencoder_hidden_sizes or self.autoencoder_hidden_sizes
+        )
+        self.discriminator_hidden_sizes = (
+            config.discriminator_hidden_sizes or self.discriminator_hidden_sizes
+        )
+        self.autoencoder_use_batch_norms = (
+            config.autoencoder_use_batch_norms or self.autoencoder_use_batch_norms
+        )
+        self.autoencoder_use_layer_norms = (
+            config.autoencoder_use_layer_norms or self.autoencoder_use_layer_norms
+        )
         self.n_head = config.n_head or self.n_head
         self.fusion_method = config.fusion_method or self.fusion_method
 
@@ -77,11 +85,13 @@ class DefaultTechnique(NamedObject):
                         for n_layer in range(n_autoencoder_layer)
                     ],
                     use_batch_norms=[
-                        (n_layer + 1 != n_autoencoder_layer) and self.autoencoder_use_batch_norms
+                        (n_layer + 1 != n_autoencoder_layer)
+                        and self.autoencoder_use_batch_norms
                         for n_layer in range(n_autoencoder_layer)
                     ],
                     use_layer_norms=[
-                        (n_layer + 1 != n_autoencoder_layer) and self.autoencoder_use_layer_norms
+                        (n_layer + 1 != n_autoencoder_layer)
+                        and self.autoencoder_use_layer_norms
                         for n_layer in range(n_autoencoder_layer)
                     ],
                 )
@@ -120,6 +130,7 @@ class ATACSeqTechnique(DefaultTechnique):
     name = "atacseq"
 
     autoencoder_use_batch_norms = True
+
 
 class DLPFCTechnique(DefaultTechnique):
     name = "dlpfc"

@@ -56,12 +56,7 @@ class UnitedNet:
         If overriding existing training dataset, the model will also be refreshed.
         """
         self.data = DataManager.format_anndatas(
-            TrainingData.name,
-            adatas,
-            batch_index,
-            batch_key,
-            label_index,
-            label_key,
+            TrainingData.name, adatas, batch_index, batch_key, label_index, label_key,
         )
         self.technique = TechniqueManager.get_constructor_by_name(technique)(self.data)
         self.model = Model(self.technique.get_model_config())
