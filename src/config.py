@@ -24,6 +24,15 @@ def none_or_typelist(t):
     return NewType(name, Union[None, List[t]])
 
 
+def none_or_type_or_typelist(t):
+    """\
+    Return new type defined as union of None, the given type or the list of the given type.
+        e.g. bool -> Union[None, bool, List[bool]]
+    """
+    name = f"None_or_{t.__name__}_or_{t.__name__}List"
+    return NewType(name, Union[None, t, List[t]])
+
+
 def type_or_typelist(t):
     """\
     Return new type defined as the union of the given type or its list
@@ -103,21 +112,21 @@ class ScheduleConfig(Config):
 
 # ==================== Task Config Definition ====================
 class TaskConfig(Config):
-    latent_size: none_or_type(int) = None
-    hidden_size: none_or_type(int) = None
-    autoencoder_hidden_sizes: none_or_typelist(int) = None
-    discriminator_hidden_sizes: none_or_typelist(int) = None
-    autoencoder_use_batch_norms: none_or_type(bool) = None
-    autoencoder_use_layer_norms: none_or_type(bool) = None
-    n_head: none_or_type(int) = None
-    fusion_method: none_or_type(str) = None
+    train_schedules: List[ScheduleConfig] = None
+    finetune_schedules: List[ScheduleConfig] = None
+    transfer_schedules: List[ScheduleConfig] = None
 
 
 # ==================== Technique Config Definition ====================
 class TechniqueConfig(Config):
-    train_schedules: List[ScheduleConfig] = None
-    finetune_schedules: List[ScheduleConfig] = None
-    transfer_schedules: List[ScheduleConfig] = None
+    latent_size: none_or_type(int) = None
+    hidden_size: none_or_type(int) = None
+    autoencoder_hidden_sizes: none_or_typelist(int) = None
+    discriminator_hidden_sizes: none_or_typelist(int) = None
+    autoencoder_use_batch_norms: none_or_type_or_typelist(bool) = None
+    autoencoder_use_layer_norms: none_or_type_or_typelist(bool) = None
+    n_head: none_or_type(int) = None
+    fusion_method: none_or_type(str) = None
 
 
 # ==================== Model Config Definition ====================

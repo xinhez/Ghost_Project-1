@@ -294,6 +294,7 @@ class UnitedNet:
     def update_technique_config(self, config: TechniqueConfig) -> None:
         self.technique.update_config(config)
         self.model = Model(self.technique.get_model_config())
+        self.model.set_device_in_use(self.device)
 
     def set_device(self, device: str = "cpu"):
         self.device = device
