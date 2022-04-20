@@ -31,7 +31,9 @@ class LatentMMDLoss(BaseLoss):
 
     def __init__(self, config, model):
         super().__init__(config, model)
-        self.sigmas = torch.tensor(config.sigmas or [10, 15, 20, 50], device=model.device_in_use)
+        self.sigmas = torch.tensor(
+            config.sigmas or [10, 15, 20, 50], device=model.device_in_use
+        )
         self.ref_batch = config.ref_batch or 0
 
     @staticmethod
@@ -76,11 +78,13 @@ class LatentMMDLoss(BaseLoss):
                         n_nonref = nonref_indices.shape[0]
 
                         if n_nonref > 0:
-                            nonref_var = torch.sum(K[nonref_indices].t()[nonref_indices]) / (
-                                n_nonref ** 2
-                            )
+                            nonref_var = torch.sum(
+                                K[nonref_indices].t()[nonref_indices]
+                            ) / (n_nonref ** 2)
                             covar = (
-                                torch.sum(K[ref_indices].t()[nonref_indices]) / n_ref / n_nonref
+                                torch.sum(K[ref_indices].t()[nonref_indices])
+                                / n_ref
+                                / n_nonref
                             )
 
                             loss += torch.abs(ref_var + nonref_var - 2 * covar)
@@ -88,13 +92,14 @@ class LatentMMDLoss(BaseLoss):
             loss /= model.n_modality
             loss *= self.weight
         return loss, None
-        
+
 
 class ReconstructionMMDLoss(BaseLoss):
     name = "reconstruction_mmd"
     """\
     Adapted from https://github.com/KrishnaswamyLab/SAUCIE/blob/master/model.py
     """
+
     def __call__(self, model):
         eps = 1e-5
 
@@ -107,26 +112,22 @@ class ReconstructionMMDLoss(BaseLoss):
             reconstruction = translations[modality_index]
 
             for batch in torch.unique(batches):
-                    indices = torch.where(batches == batch)[0]
-                    sample_count = indices.shape[0]
+                indices = torch.where(batches == batch)[0]
+                sample_count = indices.shape[0]
 
-                    if sample_count > 1:
-                        rc = reconstruction[indices]
-                        gt = modality[indices]
+                if sample_count > 1:
+                    rc = reconstruction[indices]
+                    gt = modality[indices]
 
-                        rc_mean = torch.mean(rc, dim=0, keepdim=True)
-                        rc_std = torch.std(rc, dim=0, keepdim=True)
-                        rc_normalized = (rc - rc_mean) / (
-                            rc_std + eps
-                        )
+                    rc_mean = torch.mean(rc, dim=0, keepdim=True)
+                    rc_std = torch.std(rc, dim=0, keepdim=True)
+                    rc_normalized = (rc - rc_mean) / (rc_std + eps)
 
-                        gt_mean = torch.mean(gt, dim=0, keepdim=True)
-                        gt_std = torch.std(gt, dim=0, keepdim=True)
-                        gt_normalized = (gt - gt_mean) / (
-                            gt_std + eps
-                        )
+                    gt_mean = torch.mean(gt, dim=0, keepdim=True)
+                    gt_std = torch.std(gt, dim=0, keepdim=True)
+                    gt_normalized = (gt - gt_mean) / (gt_std + eps)
 
-                        loss += F.mse_loss(rc_normalized, gt_normalized)
+                    loss += F.mse_loss(rc_normalized, gt_normalized)
 
         loss /= model.n_modality
         loss *= self.weight

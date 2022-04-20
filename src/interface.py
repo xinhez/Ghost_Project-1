@@ -56,7 +56,12 @@ class UnitedNet:
         If overriding existing training dataset, the model will also be refreshed.
         """
         self.data = DataManager.format_anndatas(
-            TrainingData.name, adatas, batch_index, batch_key, label_index, label_key,
+            TrainingData.name,
+            adatas,
+            batch_index,
+            batch_key,
+            label_index,
+            label_key,
             technique=technique,
         )
         self.model = create_model_from_data(self.data)
@@ -71,7 +76,7 @@ class UnitedNet:
         batch_index_validate: int = None,
         batch_key_validate: str = None,
         n_epoch: int = 1,
-        learning_rate: float =0.001,
+        learning_rate: float = 0.001,
         batch_size: int = 512,
         save_best_model: bool = False,
         checkpoint: int = 0,
@@ -116,7 +121,7 @@ class UnitedNet:
         batch_index_validate: int = None,
         batch_key_validate: str = None,
         n_epoch: int = 1,
-        learning_rate: float =0.001,
+        learning_rate: float = 0.001,
         batch_size: int = 512,
         save_best_model: bool = False,
         checkpoint: int = 0,
@@ -166,7 +171,7 @@ class UnitedNet:
         batch_index_validate: int = None,
         batch_key_validate: str = None,
         n_epoch: int = 1,
-        learning_rate: float =0.001,
+        learning_rate: float = 0.001,
         batch_size: int = 512,
         save_best_model: bool = False,
         checkpoint: int = 0,

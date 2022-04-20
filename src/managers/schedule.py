@@ -26,7 +26,9 @@ class BaseSchedule(AlternativelyNamedObject):
     loss_configs = None
     optimizer_modules = None
 
-    def __init__(self, logger, model, learning_rate, config, model_path, task, method, order):
+    def __init__(
+        self, logger, model, learning_rate, config, model_path, task, method, order
+    ):
         self.logger = logger
 
         loss_configs = self.loss_configs or config.losses
@@ -228,9 +230,11 @@ class TranslationTransferSchedule(TranslationSchedule):
 class LatentBatchAlignmentSchedule(BaseSchedule):
     name = "latent_batch_alignment"
     best_loss_term = LatentMMDLoss.name
-    loss_configs = [LossConfig(name=LatentMMDLoss.name),
+    loss_configs = [
+        LossConfig(name=LatentMMDLoss.name),
         LossConfig(name=ReconstructionLoss.name),
-        LossConfig(name=TranslationLoss.name)]
+        LossConfig(name=TranslationLoss.name),
+    ]
     optimizer_modules = [ModuleNames.encoders]
 
 
@@ -240,7 +244,8 @@ class ReconstructionBatchAlignmentSchedule(BaseSchedule):
     loss_configs = [
         LossConfig(name=ReconstructionMMDLoss.name),
         LossConfig(name=ReconstructionLoss.name),
-        LossConfig(name=TranslationLoss.name)]
+        LossConfig(name=TranslationLoss.name),
+    ]
     optimizer_modules = [
         ModuleNames.encoders,
         ModuleNames.decoders,

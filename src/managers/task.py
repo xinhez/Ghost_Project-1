@@ -33,14 +33,16 @@ from src.managers.schedule import (
 class BaseTask(AlternativelyNamedObject):
     name = "Task"
 
-    def update_schedules(self, logger, model, learning_rate, schedule_configs, model_path, method):
+    def update_schedules(
+        self, logger, model, learning_rate, schedule_configs, model_path, method
+    ):
         if schedule_configs is None:
             raise Exception(f"Please provide {method}_schedules for {self.name} task.")
         self.schedules = [
             ScheduleManager.get_constructor_by_name(config.name)(
                 logger,
                 model,
-                learning_rate, 
+                learning_rate,
                 config,
                 model_path,
                 self.get_short_name(),

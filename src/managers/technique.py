@@ -90,11 +90,11 @@ class DefaultTechnique(NamedObject):
 
 class ATACSeqTechnique(DefaultTechnique):
     name = "atacseq"
-    
+
 
 class DLPFCTechnique(DefaultTechnique):
     name = "dlpfc"
-    
+
 
 class TechniqueManager(ObjectManager):
     name = "techniques"
