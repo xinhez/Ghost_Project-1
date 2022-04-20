@@ -37,6 +37,7 @@ def convert_to_lowercase(item):
 def inplace_combine_tensor_lists(lists, new_list):
     """\
     In place add a new (nested) tensor list to current collections.
+    This operation will move all concerned tensors to CPU.
     """
     if len(lists) == 0:
         for new_l in new_list:
@@ -45,13 +46,13 @@ def inplace_combine_tensor_lists(lists, new_list):
                 inplace_combine_tensor_lists(l, new_l)
                 lists.append(l)
             else:
-                lists.append([new_l])
+                lists.append([new_l.detach().cpu()])
     else:
         for l, new_l in zip(lists, new_list):
             if isinstance(new_l, list):
                 inplace_combine_tensor_lists(l, new_l)
             else:
-                l.append(new_l)
+                l.append(new_l.detach().cpu())
 
 
 def concat_tensor_lists(lists):
@@ -64,16 +65,6 @@ def concat_tensor_lists(lists):
         else:
             new_lists.append(torch.cat(l, dim=0))
     return new_lists
-
-
-def move_tensor_list_to_cpu(tensors):
-    cpu_tensors = []
-    for tensor in tensors:
-        if isinstance(tensor, list):
-            cpu_tensors.append(move_tensor_list_to_cpu(tensor))
-        else:
-            cpu_tensors.append(tensor.detach().cpu())
-    return cpu_tensors
 
 
 def set_random_seed(n, r, t, seed):

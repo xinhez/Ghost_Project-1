@@ -228,14 +228,19 @@ class TranslationTransferSchedule(TranslationSchedule):
 class LatentBatchAlignmentSchedule(BaseSchedule):
     name = "latent_batch_alignment"
     best_loss_term = LatentMMDLoss.name
-    loss_configs = [LossConfig(name=LatentMMDLoss.name)]
+    loss_configs = [LossConfig(name=LatentMMDLoss.name),
+        LossConfig(name=ReconstructionLoss.name),
+        LossConfig(name=TranslationLoss.name)]
     optimizer_modules = [ModuleNames.encoders]
 
 
 class ReconstructionBatchAlignmentSchedule(BaseSchedule):
     name = "reconstruction_batch_alignment"
     best_loss_term = ReconstructionMMDLoss.name
-    loss_configs = [LossConfig(name=ReconstructionMMDLoss.name)]
+    loss_configs = [
+        LossConfig(name=ReconstructionMMDLoss.name),
+        LossConfig(name=ReconstructionLoss.name),
+        LossConfig(name=TranslationLoss.name)]
     optimizer_modules = [
         ModuleNames.encoders,
         ModuleNames.decoders,

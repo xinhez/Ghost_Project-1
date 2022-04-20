@@ -31,7 +31,6 @@ class LatentMMDLoss(BaseLoss):
 
     def __init__(self, config, model):
         super().__init__(config, model)
-        self.weight = config.weight or 0.001
         self.sigmas = torch.tensor(config.sigmas or [10, 15, 20, 50], device=model.device_in_use)
         self.ref_batch = config.ref_batch or 0
 
@@ -89,59 +88,45 @@ class LatentMMDLoss(BaseLoss):
             loss /= model.n_modality
             loss *= self.weight
         return loss, None
-
+        
 
 class ReconstructionMMDLoss(BaseLoss):
     name = "reconstruction_mmd"
     """\
     Adapted from https://github.com/KrishnaswamyLab/SAUCIE/blob/master/model.py
     """
-    def __init__(self, config, model):
-        super().__init__(config, model)
-        self.ref_batch = config.ref_batch or 0
-
     def __call__(self, model):
         eps = 1e-5
 
         loss = 0
         batches = model.batches
 
-        ref_indices = torch.where(batches == self.ref_batch)[0]
-
         for modality_index, (translations, modality) in enumerate(
             zip(model.translations, model.modalities)
         ):
             reconstruction = translations[modality_index]
 
-            ref_rc = reconstruction[ref_indices]
-            ref_gt = modality[ref_indices]
-            loss += BaseLoss.compute_distance(
-                model.config.encoders[modality_index].is_binary_input,
-                ref_rc, ref_gt,
-            )
+            for batch in torch.unique(batches):
+                    indices = torch.where(batches == batch)[0]
+                    sample_count = indices.shape[0]
 
-            for nonref_batch in torch.unique(batches):
-                if nonref_batch != self.ref_batch:
-                    nonref_indices = torch.where(batches == nonref_batch)[0]
-                    n_nonref = nonref_indices.shape[0]
+                    if sample_count > 1:
+                        rc = reconstruction[indices]
+                        gt = modality[indices]
 
-                    if n_nonref > 1:
-                        nonref_rc = reconstruction[nonref_indices]
-                        nonref_gt = modality[nonref_indices]
-
-                        nonref_rc_mean = torch.mean(nonref_rc, dim=0, keepdim=True)
-                        nonref_rc_std = torch.std(nonref_rc, dim=0, keepdim=True)
-                        nonref_rc_normalized = (nonref_rc - nonref_rc_mean) / (
-                            nonref_rc_std + eps
+                        rc_mean = torch.mean(rc, dim=0, keepdim=True)
+                        rc_std = torch.std(rc, dim=0, keepdim=True)
+                        rc_normalized = (rc - rc_mean) / (
+                            rc_std + eps
                         )
 
-                        nonref_gt_mean = torch.mean(nonref_gt, dim=0, keepdim=True)
-                        nonref_gt_std = torch.std(nonref_gt, dim=0, keepdim=True)
-                        nonref_gt_normalized = (nonref_gt - nonref_gt_mean) / (
-                            nonref_gt_std + eps
+                        gt_mean = torch.mean(gt, dim=0, keepdim=True)
+                        gt_std = torch.std(gt, dim=0, keepdim=True)
+                        gt_normalized = (gt - gt_mean) / (
+                            gt_std + eps
                         )
 
-                        loss += F.mse_loss(nonref_rc_normalized, nonref_gt_normalized)
+                        loss += F.mse_loss(rc_normalized, gt_normalized)
 
         loss /= model.n_modality
         loss *= self.weight

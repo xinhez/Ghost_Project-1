@@ -95,7 +95,6 @@ class BaseTask(AlternativelyNamedObject):
                 outputs = model(modalities, batches, labels)
 
             if infer_model:
-                outputs = utils.move_tensor_list_to_cpu(outputs)
                 utils.inplace_combine_tensor_lists(all_outputs, outputs)
 
         if all_losses:
