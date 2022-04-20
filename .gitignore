@@ -12,3 +12,4 @@ saved_*
 
 # Ignore developer testing files
 dev_test*
+*.ipynb
