@@ -37,6 +37,7 @@ class Dataset(D.Dataset):
 class Data(NamedObject):
     name = "Data"
 
+    labels = None
     technique = DefaultTechnique.name
 
     def __init__(self, modalities, batches_or_batch, *_):
