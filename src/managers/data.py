@@ -171,6 +171,10 @@ class InferenceData(Data):
         )
 
 
+class TransferenceData(Data):
+    name = "transference"
+
+
 class LabeledData(Data):
     name = "labeled"
 
@@ -213,10 +217,6 @@ class TrainingData(LabeledData):
         self.positive_modality_flags = [
             TrainingData.is_positive_modality(modality) for modality in modalities
         ]
-
-
-class TransferenceData(LabeledData):
-    name = "transference"
 
 
 class ValidationData(LabeledData):

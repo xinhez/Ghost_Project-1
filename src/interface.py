@@ -38,7 +38,8 @@ class UnitedNet:
     ):
         self.set_random_seed(random_seed)
         self.set_device(device)
-        self.set_log_path(log_path, verbose)
+        self.set_verbose(verbose)
+        self.set_log_path(log_path)
         self.set_model_path(model_path)
         self.set_tensorboard_path(tensorboard_path)
 
@@ -306,8 +307,8 @@ class UnitedNet:
         self.model = self.model.to(device=self.device)
         self.model.set_device_in_use(self.device)
 
-    def set_log_path(self, log_path, verbose):
-        self.logger = Logger(log_path, verbose)
+    def set_log_path(self, log_path):
+        self.logger = Logger(log_path, self.verbose)
 
     def set_model_path(self, model_path):
         self.model_path = model_path
@@ -318,6 +319,9 @@ class UnitedNet:
 
     def set_tensorboard_path(self, tensorboard_path):
         self.tensorboard_path = tensorboard_path
+
+    def set_verbose(self, verbose):
+        self.verbose = verbose
 
     def _get_data(self):
         return getattr(self, Data.name)
