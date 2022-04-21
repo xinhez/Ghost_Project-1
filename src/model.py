@@ -194,9 +194,14 @@ class Model(nn.Module):
                 for (cluster, hidden) in zip(self.clusters, self.hiddens)
             ]
 
+            self.predictions = [
+                torch.argmax(cluster_outputs, axis=1)
+                for cluster_outputs in self.cluster_outputs
+            ]
+
             return (
                 self.translations,
-                self.cluster_outputs[self.best_head],
+                self.predictions[self.best_head],
                 self.fused_latents[self.best_head],
             )
 

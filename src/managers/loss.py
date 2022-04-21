@@ -320,10 +320,8 @@ class ContrastiveLoss(BaseLoss):
         h = F.normalize(projections, p=2, dim=1)
         return h @ h.t()
 
-    def _draw_negative_samples(self, cluster_outputs, v, pos_indices):
-        predictions = cluster_outputs.argmax(axis=1).detach()
+    def _draw_negative_samples(self, predictions, v, pos_indices):
         predictions = torch.cat(v * [predictions], dim=0)
-
         weights = (1 - self.eye[predictions])[:, predictions[[pos_indices]]].T
         n_negative_samples = int(self.sampling_ratio * predictions.size(0))
         negative_sample_indices = torch.multinomial(
@@ -361,21 +359,24 @@ class ContrastiveLoss(BaseLoss):
             logits, model.n_modality, model.n_sample
         )
 
-        for cluster_outputs in model.cluster_outputs:
-            neg_inds = self._draw_negative_samples(
-                cluster_outputs, model.n_modality, pos_inds
-            )
-            neg = logits[pos_inds.view(-1, 1), neg_inds]
-            inputs = torch.cat((pos.view(-1, 1), neg), dim=1)
-            labels = torch.zeros(
-                model.n_modality * (model.n_modality - 1) * model.n_sample,
-                device=model.device_in_use,
-                dtype=torch.long,
-            )
-            loss = F.cross_entropy(inputs, labels)
+        for predictions in model.predictions:
+            if len(torch.unique(predictions)) > 1:
+                neg_inds = self._draw_negative_samples(
+                    predictions, model.n_modality, pos_inds
+                )
+                neg = logits[pos_inds.view(-1, 1), neg_inds]
+                inputs = torch.cat((pos.view(-1, 1), neg), dim=1)
+                labels = torch.zeros(
+                    model.n_modality * (model.n_modality - 1) * model.n_sample,
+                    device=model.device_in_use,
+                    dtype=torch.long,
+                )
+                loss = F.cross_entropy(inputs, labels)
 
-            loss /= model.n_head
-            loss *= self.weight
+                loss /= model.n_head
+                loss *= self.weight
+            else:
+                loss = 0
 
             total_loss += loss
             head_losses.append(loss)

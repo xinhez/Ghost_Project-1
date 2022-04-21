@@ -21,3 +21,6 @@ conda install tensorflow-estimator=2.6.0
 
 ### Run Unittest
 `python -m unittest test/run_all.py`
+
+### Remove python cache files
+`find . | grep -E "(/__pycache__$|\.pyc$|\.pyo$)" | xargs rm -rf`

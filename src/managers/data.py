@@ -239,13 +239,13 @@ class DataManager(ObjectManager):
 
     @staticmethod
     def anndata_from_outputs(model, dataset, outputs):
-        _, cluster_outputs, fused_latents = outputs
+        _, predictions, fused_latents = outputs
         adata = ad.AnnData(fused_latents.cpu().numpy())
         adata.obs["batch"] = model.data_batch_encoder.inverse_transform(
             dataset.batches.tolist()
         )
         adata.obs["predicted_label"] = model.data_label_encoder.inverse_transform(
-            cluster_outputs.argmax(axis=1).cpu().tolist()
+            predictions.cpu().tolist()
         )
 
         sc.tl.pca(adata)

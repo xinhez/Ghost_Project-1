@@ -118,8 +118,7 @@ class BaseTask(AlternativelyNamedObject):
             )
         dataset = dataloader.dataset
         labels = dataset.labels
-        translations_outputs, cluster_outputs, *_ = outputs
-        predictions = cluster_outputs.argmax(axis=1)
+        translations_outputs, predictions, *_ = outputs
 
         r2s = [
             [
@@ -349,10 +348,7 @@ class BaseTask(AlternativelyNamedObject):
             data_transfer, model, shuffle=True, batch_size=batch_size
         )
         datalodaer_validate = data_validate.create_dataloader(
-            model,
-            shuffle=True,
-            batch_size=batch_size,
-            random_seed=random_seed,
+            model, shuffle=True, batch_size=batch_size, random_seed=random_seed,
         )
 
         for epoch in range(n_epoch):
