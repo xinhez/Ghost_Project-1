@@ -111,10 +111,6 @@ class Data(NamedObject):
         )
 
 
-class EvaluationData(Data):
-    name = "evaluation"
-
-
 class InferenceData(Data):
     name = "inference"
 
@@ -217,6 +213,10 @@ class TrainingData(LabeledData):
         self.positive_modality_flags = [
             TrainingData.is_positive_modality(modality) for modality in modalities
         ]
+
+
+class EvaluationData(LabeledData):
+    name = "evaluation"
 
 
 class ValidationData(LabeledData):
