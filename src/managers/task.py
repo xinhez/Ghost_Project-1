@@ -354,7 +354,10 @@ class BaseTask(AlternativelyNamedObject):
             data_transfer, model, shuffle=True, batch_size=batch_size
         )
         datalodaer_validate = data_validate.create_dataloader(
-            model, shuffle=True, batch_size=batch_size, random_seed=random_seed,
+            model,
+            shuffle=True,
+            batch_size=batch_size,
+            random_seed=random_seed,
         )
 
         for epoch in range(n_epoch):

@@ -39,22 +39,10 @@ class Data(NamedObject):
 
     technique = DefaultTechnique.name
 
-    def __init__(self, modalities, batches_or_batch, labels_or_None, *_):
+    def __init__(self, modalities, batches_or_batch, *_):
         self.validate_batches(batches_or_batch)
-        self.save_modalities(modalities)
         self.save_batches(batches_or_batch)
-        self.save_labels(labels_or_None)
-
-    @staticmethod
-    def is_binary_modality(modality):
-        unique_values = np.unique(modality)
-        return (
-            len(unique_values) == 2 and unique_values[0] == 0 and unique_values[1] == 1
-        )
-
-    @staticmethod
-    def is_positive_modality(modality):
-        return np.all(modality >= 0)
+        self.modalities = modalities
 
     @property
     def modality_sizes(self):
@@ -72,33 +60,11 @@ class Data(NamedObject):
     def n_sample(self):
         return len(self.modalities[0])
 
-    def save_modalities(self, modalities):
-        self.modalities = modalities
-        self.binary_modality_flags = [
-            Data.is_binary_modality(modality) for modality in modalities
-        ]
-        self.positive_modality_flags = [
-            Data.is_positive_modality(modality) for modality in modalities
-        ]
-
     def save_batches(self, batches_or_batch):
         if isinstance(batches_or_batch, list):
             self.batches = batches_or_batch
         else:
             self.batches = [batches_or_batch for _ in range(self.n_sample)]
-
-    def save_labels(self, labels_or_None):
-        self.labels = labels_or_None
-        if labels_or_None is None:
-            self.class_weights = None
-            self.n_label = None
-        else:
-            self.class_weights = list(
-                class_weight.compute_class_weight(
-                    "balanced", classes=np.unique(self.labels), y=self.labels
-                )
-            )
-            self.n_label = utils.count_unique(self.labels)
 
     def validate_batches(self, batch_or_batches):
         if batch_or_batches is None:
@@ -205,15 +171,55 @@ class InferenceData(Data):
         )
 
 
-class TrainingData(Data):
+class LabeledData(Data):
+    name = "labeled"
+
+    def __init__(self, modalities, batches_or_batch, labels, *args):
+        super().__init__(modalities, batches_or_batch, labels, *args)
+        if labels is None:
+            raise Exception("Please provide valid labels.")
+        self.labels = labels
+
+
+class TrainingData(LabeledData):
     name = "training"
 
+    def __init__(self, modalities, batches_or_batch, labels, *args):
+        super().__init__(modalities, batches_or_batch, labels, *args)
+        self.process_modalities(modalities)
+        self.class_weights = list(
+            class_weight.compute_class_weight(
+                "balanced", classes=np.unique(self.labels), y=self.labels
+            )
+        )
+        self.n_label = utils.count_unique(self.labels)
 
-class TransferenceData(Data):
+    @staticmethod
+    def is_binary_modality(modality):
+        unique_values = np.unique(modality)
+        return (
+            len(unique_values) == 2 and unique_values[0] == 0 and unique_values[1] == 1
+        )
+
+    @staticmethod
+    def is_positive_modality(modality):
+        return np.all(modality >= 0)
+
+    def process_modalities(self, modalities):
+        self.modalities = modalities
+        self.binary_modality_flags = [
+            TrainingData.is_binary_modality(modality) for modality in modalities
+        ]
+        self.positive_modality_flags = [
+            TrainingData.is_positive_modality(modality) for modality in modalities
+        ]
+
+
+class TransferenceData(LabeledData):
     name = "transference"
 
 
-class ValidationData(Data):
+class ValidationData(LabeledData):
     name = "validation"
 
 

@@ -56,7 +56,12 @@ class UnitedNet:
         If overriding existing training dataset, the model will also be refreshed.
         """
         self.data = DataManager.format_anndatas(
-            TrainingData.name, adatas, batch_index, batch_key, label_index, label_key,
+            TrainingData.name,
+            adatas,
+            batch_index,
+            batch_key,
+            label_index,
+            label_key,
         )
         self.technique = TechniqueManager.get_constructor_by_name(technique)(self.data)
         self.model = Model(self.technique.get_model_config())
@@ -156,8 +161,6 @@ class UnitedNet:
         self,
         task: Union[str, TaskConfig],
         adatas_transfer: List[anndata.AnnData],
-        label_index_transfer: int,
-        label_key_transfer: str,
         batch_index_transfer: int = None,
         batch_key_transfer: str = None,
         adatas_validate: List[anndata.AnnData] = None,
@@ -187,8 +190,6 @@ class UnitedNet:
             adatas_transfer,
             batch_index_transfer,
             batch_key_transfer,
-            label_index_transfer,
-            label_key_transfer,
         )
 
         self._start_writer()
