@@ -75,12 +75,7 @@ class BaseTask(AlternativelyNamedObject):
         all_outputs = []
         all_losses = {}
 
-        for modalities, *batches_and_maybe_labels in dataloader:
-            if len(batches_and_maybe_labels) == 1:
-                batches, labels = *batches_and_maybe_labels, None
-            elif len(batches_and_maybe_labels) == 2:
-                batches, labels = batches_and_maybe_labels
-
+        for modalities, batches, labels in dataloader:
             if schedule is not None:
                 outputs = model(
                     modalities,

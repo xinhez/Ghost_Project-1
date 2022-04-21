@@ -21,14 +21,13 @@ class Dataset(D.Dataset):
             torch.tensor(modality, dtype=torch.float) for modality in modalities
         ]
         self.batches = torch.tensor(batches, dtype=torch.long)
-        self.labels = None if labels is None else torch.tensor(labels, dtype=torch.long)
+        if labels is None:
+            labels = [-1 for _ in range(len(batches))]
+        self.labels = torch.tensor(labels, dtype=torch.long)
 
     def __getitem__(self, index):
         modalities = [modality[index] for modality in self.modalities]
-        if self.labels is None:
-            return modalities, self.batches[index]
-        else:
-            return modalities, self.batches[index], self.labels[index]
+        return modalities, self.batches[index], self.labels[index]
 
     def __len__(self):
         return len(self.batches)
