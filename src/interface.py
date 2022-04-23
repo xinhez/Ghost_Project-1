@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from typing import List, Union
 
-from src.config import ModelConfig, TaskConfig, TechniqueConfig
+from src.config import ModelConfig, ScheduleConfig, TechniqueConfig
 from src.logger import Logger
 from src.model import load_model_from_path, Model
 from src.managers.data import Data, DataManager
@@ -17,7 +17,7 @@ from src.managers.data import (
     TransferenceData,
     ValidationData,
 )
-from src.managers.task import BaseTask, TaskManager
+from src.managers.task import Task
 from src.managers.technique import DefaultTechnique, TechniqueManager
 from src.utils import set_random_seed
 
@@ -26,6 +26,8 @@ class UnitedNet:
     """\
     API Interface
     """
+    verbose = False
+    log_path = None
 
     def __init__(
         self,
@@ -38,8 +40,7 @@ class UnitedNet:
     ):
         self.set_random_seed(random_seed)
         self.set_device(device)
-        self.set_verbose(verbose)
-        self.set_log_path(log_path)
+        self.set_logger(verbose, log_path)
         self.set_model_path(model_path)
         self.set_tensorboard_path(tensorboard_path)
 
@@ -65,7 +66,7 @@ class UnitedNet:
 
     def train(
         self,
-        task: Union[str, TaskConfig],
+        task_or_schedules: Union[str, List[ScheduleConfig]],
         adatas_validate: List[anndata.AnnData] = None,
         label_index_validate: int = None,
         label_key_validate: str = None,
@@ -88,10 +89,13 @@ class UnitedNet:
             batch_key_validate,
         )
 
+        self.set_model_device()
+
         self._start_writer()
 
-        TaskManager.get_task_by_name_or_config(task).train(
-            task,
+
+        Task().train(
+            self.technique.get_train_schedules(task_or_schedules) if isinstance(task_or_schedules, str) else task_or_schedules,
             self.model,
             self.data,
             data_validate,
@@ -110,7 +114,7 @@ class UnitedNet:
 
     def finetune(
         self,
-        task: Union[str, TaskConfig],
+        task_or_schedules: Union[str, List[ScheduleConfig]],
         adatas_validate: List[anndata.AnnData] = None,
         label_index_validate: int = None,
         label_key_validate: str = None,
@@ -133,10 +137,12 @@ class UnitedNet:
             batch_key_validate,
         )
 
+        self.set_model_device()
+
         self._start_writer()
 
-        TaskManager.get_task_by_name_or_config(task).finetune(
-            task,
+        Task().finetune(
+            self.technique.get_finetune_schedules(task_or_schedules) if isinstance(task_or_schedules, str) else task_or_schedules,
             self.model,
             self.data,
             data_validate,
@@ -155,7 +161,7 @@ class UnitedNet:
 
     def transfer(
         self,
-        task: Union[str, TaskConfig],
+        task_or_schedules: Union[str, List[ScheduleConfig]],
         adatas_transfer: List[anndata.AnnData],
         batch_index_transfer: int = None,
         batch_key_transfer: str = None,
@@ -188,10 +194,12 @@ class UnitedNet:
             batch_key_transfer,
         )
 
+        self.set_model_device()
+
         self._start_writer()
 
-        TaskManager.get_task_by_name_or_config(task).transfer(
-            task,
+        Task().transfer(
+            self.technique.get_transfer_schedules(task_or_schedules) if isinstance(task_or_schedules, str) else task_or_schedules,
             self.model,
             self.data,
             data_transfer,
@@ -230,8 +238,10 @@ class UnitedNet:
             label_index_evaluate,
             label_key_evaluate,
         )
+        
+        self.set_model_device()
 
-        return BaseTask().evaluate(self.model, data_evaluation, self.logger)
+        return Task().evaluate(self.model, data_evaluation, self.logger)
 
     def infer(
         self,
@@ -257,8 +267,10 @@ class UnitedNet:
             modalities_provided=modalities_provided,
             modality_sizes=modality_sizes or self.data.modality_sizes,
         )
+        
+        self.set_model_device()
 
-        return BaseTask().infer(
+        return Task().infer(
             self.model, data_inference, self.logger, modalities_provided
         )
 
@@ -303,7 +315,8 @@ class UnitedNet:
         self.model.set_device_in_use(self.device)
 
     def set_log_path(self, log_path):
-        self.logger = Logger(log_path, self.verbose)
+        self.log_path = log_path
+        self.set_logger()
 
     def set_model_path(self, model_path):
         self.model_path = model_path
@@ -317,6 +330,14 @@ class UnitedNet:
 
     def set_verbose(self, verbose):
         self.verbose = verbose
+        self.set_logger()
+
+    def set_logger(self, verbose=None, log_path=None):
+        if verbose is not None:
+            self.verbose = verbose
+        if log_path is not None:
+            self.log_path = log_path
+        self.logger = Logger(self.log_path, self.verbose)
 
     def _get_data(self):
         return getattr(self, Data.name)

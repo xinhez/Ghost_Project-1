@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from itertools import chain
 
-from src.config import combine_config
+from src.config import combine_configs, ModuleNames
 from src.managers.technique import TechniqueManager
 from src.models.fuser import FuserManager
 from src.models.labelEncoder import LabelEncoder
@@ -23,14 +24,6 @@ def create_module_list(constructor, configs):
     """
     return nn.ModuleList([constructor(config) for config in configs])
 
-
-class ModuleNames:
-    encoders = "encoders"
-    decoders = "decoders"
-    discriminators = "discriminators"
-    fusers = "fusers"
-    projectors = "projectors"
-    clusters = "clusters"
 
 
 class Model(nn.Module):
@@ -53,7 +46,7 @@ class Model(nn.Module):
         self.update_config(config)
 
     def update_config(self, config):
-        config = combine_config(self.config, config)
+        config = combine_configs(self.config, config)
         self.config = config
 
         self.modules_by_names = nn.ModuleDict(
@@ -128,7 +121,7 @@ class Model(nn.Module):
     @property
     def n_output(self):
         return self.config.output_size
-
+        
     @property
     def n_sample(self):
         return self.batches.shape[0]

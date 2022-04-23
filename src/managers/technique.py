@@ -1,8 +1,11 @@
-from src.config import ActivationConfig, FuserConfig, MLPConfig, ModelConfig
+from src.config import ActivationConfig, FuserConfig, ScheduleConfig, MLPConfig, ModelConfig, TaskNames, combine_mlpconfigs
 from src.managers.activation import ReLUActivation, SigmoidActivation
 from src.managers.base import NamedObject, ObjectManager
 from src.models.fuser import WeightedMeanFuser
-
+from src.managers.schedule import ClassificationSchedule, ClusteringSchedule, TranslationSchedule
+from src.managers.schedule import ClassificationFinetuneSchedule, ClusteringFinetuneSchedule, TranslationFinetuneSchedule
+from src.managers.schedule import ClassificationTransferSchedule, ClusteringTransferSchedule, TranslationTransferSchedule
+from src.managers.schedule import ReconstructionBatchAlignmentSchedule
 
 class DefaultTechnique(NamedObject):
     name = "default"
@@ -16,8 +19,74 @@ class DefaultTechnique(NamedObject):
     autoencoder_use_batch_norms = False
     autoencoder_use_layer_norms = False
 
+    dropouts = 0
+    use_biases = False
+
     n_head = 1
     fusion_method = WeightedMeanFuser.name
+
+    train_schedules = {
+        TaskNames.cross_model_prediction: [
+            ScheduleConfig(name=ClassificationSchedule.name),
+            ScheduleConfig(name=TranslationSchedule.name),
+        ],
+        TaskNames.supervised_group_identification: [
+            ScheduleConfig(name=TranslationSchedule.name),
+            ScheduleConfig(name=ClassificationSchedule.name),
+        ],
+        TaskNames.unsupervised_group_identification: [
+            ScheduleConfig(name=TranslationSchedule.name),
+            ScheduleConfig(name=ClusteringSchedule.name),
+        ],
+    }
+
+    finetune_schedules = {
+        TaskNames.cross_model_prediction: [
+            ScheduleConfig(name=ClassificationFinetuneSchedule.name),
+            ScheduleConfig(name=TranslationFinetuneSchedule.name),
+        ],
+        TaskNames.supervised_group_identification: [
+            ScheduleConfig(name=TranslationFinetuneSchedule.name),
+            ScheduleConfig(name=ClassificationFinetuneSchedule.name),
+        ],
+        TaskNames.unsupervised_group_identification: [
+            ScheduleConfig(name=TranslationFinetuneSchedule.name),
+            ScheduleConfig(name=ClusteringFinetuneSchedule.name),
+        ],
+    }
+
+    transfer_schedules = {
+        TaskNames.cross_model_prediction: [
+            ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
+            ScheduleConfig(name=ClassificationTransferSchedule.name),
+            ScheduleConfig(name=TranslationTransferSchedule.name),
+        ],
+        TaskNames.supervised_group_identification: [
+            ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
+            ScheduleConfig(name=TranslationTransferSchedule.name),
+            ScheduleConfig(name=ClassificationTransferSchedule.name),
+        ],
+        TaskNames.unsupervised_group_identification: [
+            ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
+            ScheduleConfig(name=TranslationTransferSchedule.name),
+            ScheduleConfig(name=ClusteringTransferSchedule.name),
+        ],
+    }
+
+    def get_train_schedules(self, task):
+        if task not in self.train_schedules:
+            raise Exception(f"Only {self.train_schedules.keys()} tasks are supported for {self.name} technique name for training.")
+        return self.train_schedules[task]
+        
+    def get_finetune_schedules(self, task):
+        if task not in self.train_schedules:
+            raise Exception(f"Only {self.finetune_schedules.keys()} tasks are supported for {self.name} technique name for finetuning.")
+        return self.finetune_schedules[task]
+
+    def get_transfer_schedules(self, task):
+        if task not in self.train_schedules:
+            raise Exception(f"Only {self.transfer_schedules.keys()} tasks are supported for {self.name} technique name for transfering.")
+        return self.transfer_schedules[task] 
 
     def __init__(self, data):
         self.modality_sizes = data.modality_sizes
@@ -60,6 +129,8 @@ class DefaultTechnique(NamedObject):
                     input_size=input_size,
                     output_size=self.latent_size,
                     hidden_sizes=self.autoencoder_hidden_sizes,
+                    dropouts=self.dropouts,
+                    use_biases=self.use_biases,
                     is_binary_input=self.binary_modality_flags[modality_index],
                     activations=ActivationConfig(method=ReLUActivation.name),
                     use_batch_norms=self.autoencoder_use_batch_norms,
@@ -72,6 +143,9 @@ class DefaultTechnique(NamedObject):
                     input_size=self.latent_size,
                     output_size=input_size,
                     hidden_sizes=list(reversed(self.autoencoder_hidden_sizes)),
+                    dropouts=self.dropouts,
+                    use_biases=self.use_biases,
+                    is_binary_input=False,
                     activations=[
                         ActivationConfig(method=SigmoidActivation.name)
                         if n_layer + 1 == n_autoencoder_layer
@@ -108,6 +182,11 @@ class DefaultTechnique(NamedObject):
                         else ActivationConfig(method=ReLUActivation.name)
                         for n_layer in range(n_discriminator_layer)
                     ],
+                    dropouts=self.dropouts,
+                    use_biases=self.use_biases,
+                    is_binary_input=False,
+                    use_batch_norms=False,
+                    use_layer_norms=False,
                 )
                 for input_size in self.modality_sizes
             ],
@@ -116,11 +195,31 @@ class DefaultTechnique(NamedObject):
                 for _ in range(self.n_head)
             ],
             projectors=[
-                MLPConfig(input_size=self.latent_size, output_size=self.hidden_size)
+                MLPConfig(
+                    input_size=self.latent_size, 
+                    output_size=self.hidden_size,
+                    hidden_sizes=[],
+                    dropouts=self.dropouts,
+                    use_biases=self.use_biases,
+                    is_binary_input=False,
+                    activations=None,
+                    use_batch_norms=False,
+                    use_layer_norms=False,
+                    )
                 for _ in range(self.n_head)
             ],
             clusters=[
-                MLPConfig(input_size=self.hidden_size, output_size=self.n_label)
+                MLPConfig(
+                    input_size=self.hidden_size, 
+                    output_size=self.n_label,
+                    hidden_sizes=[],
+                    dropouts=self.dropouts,
+                    use_biases=self.use_biases,
+                    is_binary_input=False,
+                    activations=None,
+                    use_batch_norms=False,
+                    use_layer_norms=False,
+                )
                 for _ in range(self.n_head)
             ],
         )
@@ -135,13 +234,47 @@ class ATACSeqTechnique(DefaultTechnique):
 class DLPFCTechnique(DefaultTechnique):
     name = "dlpfc"
 
-    latent_size = 16
+    latent_size = 50
 
-    autoencoder_hidden_sizes = [16, 16]
-    discriminator_hidden_sizes = [16]
+    autoencoder_hidden_sizes = [256, 128, 64]
+    discriminator_hidden_sizes = [64, 32]
 
-    autoencoder_use_layer_norms = True
+    autoencoder_use_batch_norms = True
 
+    def get_train_schedules(self, task):
+        if task == TaskNames.supervised_group_identification:
+            return [ScheduleConfig(name=TranslationSchedule.name), *[ScheduleConfig(name=ClassificationSchedule.name)]*self.n_modality]
+        else:
+            return super().get_train_schedules(task)
+
+    def get_finetune_schedules(self, task):
+        if task == TaskNames.supervised_group_identification:
+            return [ScheduleConfig(name=TranslationSchedule.name), *[ScheduleConfig(name=ClassificationSchedule.name)]*self.n_modality]
+        else:
+            return super().get_finetune_schedules(task)
+
+    def get_transfer_schedules(self, task):
+        if task == TaskNames.supervised_group_identification:
+            return [ScheduleConfig(name=TranslationSchedule.name), *[ScheduleConfig(name=ClassificationSchedule.name)]*self.n_modality]
+        else:
+            return super().get_transfer_schedules(task)
+
+
+    def get_model_config(self):
+        config =  super().get_model_config()
+        
+        n_autoencoder_layer = len(self.autoencoder_hidden_sizes) + 1
+
+        for i, encoder in enumerate(config.encoders):
+            config.encoders[i] = combine_mlpconfigs(encoder, MLPConfig(activations=[
+                    ActivationConfig(method=ReLUActivation.name)
+                    if n_layer + 1 != n_autoencoder_layer
+                    else None
+                    for n_layer in range(n_autoencoder_layer)
+                ]))
+
+        return config
+            
 
 class TechniqueManager(ObjectManager):
     name = "techniques"

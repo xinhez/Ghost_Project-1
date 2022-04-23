@@ -6,38 +6,17 @@ from src.managers.data import DataManager
 
 import src.utils as utils
 
-from src.config import ScheduleConfig
-from src.managers.base import AlternativelyNamedObject, ObjectManager
-from src.managers.schedule import ClassificationTransferSchedule, ScheduleManager
-from src.managers.schedule import (
-    ClassificationSchedule,
-    ClusteringSchedule,
-    TranslationSchedule,
-)
-from src.managers.schedule import (
-    ClassificationFinetuneSchedule,
-    ClusteringFinetuneSchedule,
-    TranslationFinetuneSchedule,
-)
-from src.managers.schedule import (
-    ClassificationTransferSchedule,
-    ClusteringTransferSchedule,
-    TranslationTransferSchedule,
-)
-from src.managers.schedule import (
-    LatentBatchAlignmentSchedule,
-    ReconstructionBatchAlignmentSchedule,
-)
+from src.managers.schedule import ClassificationSchedule, ScheduleManager
 
 
-class BaseTask(AlternativelyNamedObject):
-    name = "Task"
+class Task:
+    name = "Customized"
 
     def update_schedules(
         self, logger, model, learning_rate, schedule_configs, model_path, method
     ):
         if schedule_configs is None:
-            raise Exception(f"Please provide {method}_schedules for {self.name} task.")
+            raise Exception(f"Please provide {method}_schedules.")
         self.schedules = [
             ScheduleManager.get_constructor_by_name(config.name)(
                 logger,
@@ -45,7 +24,6 @@ class BaseTask(AlternativelyNamedObject):
                 learning_rate,
                 config,
                 model_path,
-                self.get_short_name(),
                 method,
                 schedule_order,
             )
@@ -235,7 +213,7 @@ class BaseTask(AlternativelyNamedObject):
 
     def train(
         self,
-        config,
+        schedules,
         model,
         data,
         data_validate,
@@ -249,13 +227,13 @@ class BaseTask(AlternativelyNamedObject):
         writer,
         random_seed,
     ):
-        logger.log_method_start(self.train.__name__, self.name)
+        logger.log_method_start(self.train.__name__)
 
         self.update_schedules(
             logger,
             model,
             learning_rate,
-            self.train_schedule_configs or config.train_schedules,
+            schedules,
             model_path,
             self.train.__name__,
         )
@@ -275,7 +253,7 @@ class BaseTask(AlternativelyNamedObject):
 
     def finetune(
         self,
-        config,
+        schedules,
         model,
         data,
         data_validate,
@@ -289,13 +267,13 @@ class BaseTask(AlternativelyNamedObject):
         writer,
         random_seed,
     ):
-        logger.log_method_start(self.finetune.__name__, self.name)
+        logger.log_method_start(self.finetune.__name__)
 
         self.update_schedules(
             logger,
             model,
             learning_rate,
-            self.finetune_schedule_configs or config.finetune_schedules,
+            schedules,
             model_path,
             self.finetune.__name__,
         )
@@ -315,7 +293,7 @@ class BaseTask(AlternativelyNamedObject):
 
     def transfer(
         self,
-        config,
+        schedules,
         model,
         data,
         data_transfer,
@@ -330,13 +308,13 @@ class BaseTask(AlternativelyNamedObject):
         writer,
         random_seed,
     ):
-        logger.log_method_start(self.transfer.__name__, self.name)
+        logger.log_method_start(self.transfer.__name__)
 
         self.update_schedules(
             logger,
             model,
             learning_rate,
-            self.transfer_schedule_configs or config.transfer_schedules,
+            schedules,
             model_path,
             self.transfer.__name__,
         )
@@ -393,92 +371,3 @@ class BaseTask(AlternativelyNamedObject):
                     )
 
                 writer.flush()
-
-
-class CustomizedTask(BaseTask):
-    name = "customized"
-    train_schedule_configs = None
-    finetune_schedule_configs = None
-    transfer_schedule_configs = None
-
-
-class CrossModelPredictionTask(BaseTask):
-    name = "cross_model_prediction"
-    train_schedule_configs = [
-        ScheduleConfig(name=ClassificationSchedule.name),
-        ScheduleConfig(name=TranslationSchedule.name),
-    ]
-
-    finetune_schedule_configs = [
-        ScheduleConfig(name=ClassificationFinetuneSchedule.name),
-        ScheduleConfig(name=TranslationFinetuneSchedule.name),
-    ]
-
-    transfer_schedule_configs = [
-        ScheduleConfig(name=LatentBatchAlignmentSchedule.name),
-        ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
-        ScheduleConfig(name=ClassificationTransferSchedule.name),
-        ScheduleConfig(name=TranslationTransferSchedule.name),
-    ]
-
-
-class SupervisedGroupIdentificationTask(BaseTask):
-    name = "supervised_group_identification"
-    train_schedule_configs = [
-        ScheduleConfig(name=TranslationSchedule.name),
-        ScheduleConfig(name=ClassificationSchedule.name),
-    ]
-
-    finetune_schedule_configs = [
-        ScheduleConfig(name=TranslationFinetuneSchedule.name),
-        ScheduleConfig(name=ClassificationFinetuneSchedule.name),
-    ]
-
-    transfer_schedule_configs = [
-        ScheduleConfig(name=LatentBatchAlignmentSchedule.name),
-        ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
-        ScheduleConfig(name=TranslationTransferSchedule.name),
-        ScheduleConfig(name=ClassificationTransferSchedule.name),
-    ]
-
-
-class UnsupervisedGroupIdentificationTask(BaseTask):
-    name = "unsupervised_group_identification"
-    train_schedule_configs = [
-        ScheduleConfig(name=TranslationSchedule.name),
-        ScheduleConfig(name=ClusteringSchedule.name),
-    ]
-
-    finetune_schedule_configs = [
-        ScheduleConfig(name=TranslationFinetuneSchedule.name),
-        ScheduleConfig(name=ClusteringFinetuneSchedule.name),
-    ]
-
-    transfer_schedule_configs = [
-        ScheduleConfig(name=LatentBatchAlignmentSchedule.name),
-        ScheduleConfig(name=ReconstructionBatchAlignmentSchedule.name),
-        ScheduleConfig(name=TranslationTransferSchedule.name),
-        ScheduleConfig(name=ClusteringTransferSchedule.name),
-    ]
-
-
-class TaskManager(ObjectManager):
-    """\
-    Task
-
-    Each task manages its corresponding schedules. The base task handles only evaluation and inference.
-    """
-
-    name = "tasks"
-    constructors = [
-        CrossModelPredictionTask,
-        SupervisedGroupIdentificationTask,
-        UnsupervisedGroupIdentificationTask,
-    ]
-
-    @staticmethod
-    def get_task_by_name_or_config(task):
-        if isinstance(task, str):
-            return TaskManager.get_constructor_by_name(task)()
-        else:
-            return CustomizedTask()

@@ -3,11 +3,10 @@ import os
 import tensorflow as tf
 import torch
 
-from src.config import LossConfig
-from src.model import ModuleNames
+from src.config import LossConfig, ModuleNames
 from src.managers.base import AlternativelyNamedObject, ObjectManager
 from src.managers.loss import LossManager
-from src.managers.loss import LatentMMDLoss, ReconstructionMMDLoss
+from src.managers.loss import ReconstructionMMDLoss
 from src.managers.loss import CrossEntropyLoss
 from src.managers.loss import SelfEntropyLoss, DDCLoss
 from src.managers.loss import (
@@ -27,7 +26,7 @@ class BaseSchedule(AlternativelyNamedObject):
     optimizer_modules = None
 
     def __init__(
-        self, logger, model, learning_rate, config, model_path, task, method, order
+        self, logger, model, learning_rate, config, model_path, method, order
     ):
         self.logger = logger
 
@@ -52,7 +51,7 @@ class BaseSchedule(AlternativelyNamedObject):
         if model_path is None:
             self.model_path = None
         else:
-            self.model_path = f"{model_path}/{task}_{method}_{self.order}_{self.name}"
+            self.model_path = f"{model_path}/{method}_{self.order}_{self.name}"
             os.makedirs(self.model_path, exist_ok=True)
 
         self.cluster_requested = any([loss.based_on_head for loss in self.losses])
@@ -80,9 +79,7 @@ class BaseSchedule(AlternativelyNamedObject):
                 for term in losses:
                     tf.summary.scalar(
                         f"{self.model_path}/{term}",
-                        losses[term].detach().cpu().numpy()
-                        if torch.is_tensor(losses[term])
-                        else losses[term],
+                        losses[term].detach().cpu().numpy() if torch.is_tensor(losses[term]) else losses[term],
                         step=epoch,
                     )
 
@@ -131,8 +128,6 @@ class ClassificationSchedule(BaseSchedule):
     best_loss_term = CrossEntropyLoss.name
     loss_configs = [
         LossConfig(name=CrossEntropyLoss.name),
-        LossConfig(name=ReconstructionLoss.name),
-        LossConfig(name=ContrastiveLoss.name),
     ]
     optimizer_modules = [
         ModuleNames.encoders,
@@ -144,9 +139,6 @@ class ClassificationSchedule(BaseSchedule):
 
 class ClassificationFinetuneSchedule(ClassificationSchedule):
     name = "classification(finetune)"
-    loss_configs = [
-        LossConfig(name=CrossEntropyLoss.name),
-    ]
 
 
 class ClassificationTransferSchedule(ClassificationSchedule):
@@ -229,17 +221,6 @@ class TranslationTransferSchedule(TranslationSchedule):
     ]
 
 
-class LatentBatchAlignmentSchedule(BaseSchedule):
-    name = "latent_batch_alignment"
-    best_loss_term = LatentMMDLoss.name
-    loss_configs = [
-        LossConfig(name=LatentMMDLoss.name),
-        LossConfig(name=ReconstructionLoss.name),
-        LossConfig(name=TranslationLoss.name),
-    ]
-    optimizer_modules = [ModuleNames.encoders]
-
-
 class ReconstructionBatchAlignmentSchedule(BaseSchedule):
     name = "reconstruction_batch_alignment"
     best_loss_term = ReconstructionMMDLoss.name
@@ -273,6 +254,5 @@ class ScheduleManager(ObjectManager):
         TranslationSchedule,
         TranslationFinetuneSchedule,
         TranslationTransferSchedule,
-        LatentBatchAlignmentSchedule,
         ReconstructionBatchAlignmentSchedule,
     ]

@@ -2,6 +2,7 @@
 data
 saved_*
 **/.ipynb_checkpoints
+**/.DS_Store
 
 # Ignore python generated files
 **/__pycache__

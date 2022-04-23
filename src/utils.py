@@ -34,6 +34,10 @@ def convert_to_lowercase(item):
         return item
 
 
+def get_new_or_current(current, new):
+    return current if new is None else new 
+
+
 def inplace_combine_tensor_lists(lists, new_list):
     """\
     In place add a new (nested) tensor list to current collections.
