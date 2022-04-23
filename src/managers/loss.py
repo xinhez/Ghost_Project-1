@@ -127,7 +127,7 @@ class DDCLoss(BaseLoss):
         )
 
         nom = DDCLoss._atleast_epsilon(nom)
-        dnom_squared = DDCLoss._atleast_epsilon(dnom_squared, eps=BaseLoss.eps**2)
+        dnom_squared = DDCLoss._atleast_epsilon(dnom_squared, eps=BaseLoss.eps ** 2)
 
         d = (
             2
@@ -278,7 +278,7 @@ class ContrastiveLoss(BaseLoss):
     def __call__(self, model):
         if model.n_modality == 1:
             return 0, [0] * model.n_head
-            
+
         total_loss = 0
         head_losses = []
 

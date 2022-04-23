@@ -1,11 +1,32 @@
-from src.config import ActivationConfig, FuserConfig, ScheduleConfig, MLPConfig, ModelConfig, TaskNames, combine_mlpconfigs
+from src.config import (
+    ActivationConfig,
+    FuserConfig,
+    ScheduleConfig,
+    MLPConfig,
+    ModelConfig,
+    TaskNames,
+    combine_mlpconfigs,
+)
 from src.managers.activation import ReLUActivation, SigmoidActivation
 from src.managers.base import NamedObject, ObjectManager
 from src.models.fuser import WeightedMeanFuser
-from src.managers.schedule import ClassificationSchedule, ClusteringSchedule, TranslationSchedule
-from src.managers.schedule import ClassificationFinetuneSchedule, ClusteringFinetuneSchedule, TranslationFinetuneSchedule
-from src.managers.schedule import ClassificationTransferSchedule, ClusteringTransferSchedule, TranslationTransferSchedule
+from src.managers.schedule import (
+    ClassificationSchedule,
+    ClusteringSchedule,
+    TranslationSchedule,
+)
+from src.managers.schedule import (
+    ClassificationFinetuneSchedule,
+    ClusteringFinetuneSchedule,
+    TranslationFinetuneSchedule,
+)
+from src.managers.schedule import (
+    ClassificationTransferSchedule,
+    ClusteringTransferSchedule,
+    TranslationTransferSchedule,
+)
 from src.managers.schedule import ReconstructionBatchAlignmentSchedule
+
 
 class DefaultTechnique(NamedObject):
     name = "default"
@@ -75,18 +96,24 @@ class DefaultTechnique(NamedObject):
 
     def get_train_schedules(self, task):
         if task not in self.train_schedules:
-            raise Exception(f"Only {self.train_schedules.keys()} tasks are supported for {self.name} technique name for training.")
+            raise Exception(
+                f"Only {self.train_schedules.keys()} tasks are supported for {self.name} technique name for training."
+            )
         return self.train_schedules[task]
-        
+
     def get_finetune_schedules(self, task):
         if task not in self.train_schedules:
-            raise Exception(f"Only {self.finetune_schedules.keys()} tasks are supported for {self.name} technique name for finetuning.")
+            raise Exception(
+                f"Only {self.finetune_schedules.keys()} tasks are supported for {self.name} technique name for finetuning."
+            )
         return self.finetune_schedules[task]
 
     def get_transfer_schedules(self, task):
         if task not in self.train_schedules:
-            raise Exception(f"Only {self.transfer_schedules.keys()} tasks are supported for {self.name} technique name for transfering.")
-        return self.transfer_schedules[task] 
+            raise Exception(
+                f"Only {self.transfer_schedules.keys()} tasks are supported for {self.name} technique name for transfering."
+            )
+        return self.transfer_schedules[task]
 
     def __init__(self, data):
         self.modality_sizes = data.modality_sizes
@@ -196,7 +223,7 @@ class DefaultTechnique(NamedObject):
             ],
             projectors=[
                 MLPConfig(
-                    input_size=self.latent_size, 
+                    input_size=self.latent_size,
                     output_size=self.hidden_size,
                     hidden_sizes=[],
                     dropouts=self.dropouts,
@@ -205,12 +232,12 @@ class DefaultTechnique(NamedObject):
                     activations=None,
                     use_batch_norms=False,
                     use_layer_norms=False,
-                    )
+                )
                 for _ in range(self.n_head)
             ],
             clusters=[
                 MLPConfig(
-                    input_size=self.hidden_size, 
+                    input_size=self.hidden_size,
                     output_size=self.n_label,
                     hidden_sizes=[],
                     dropouts=self.dropouts,
@@ -243,38 +270,51 @@ class DLPFCTechnique(DefaultTechnique):
 
     def get_train_schedules(self, task):
         if task == TaskNames.supervised_group_identification:
-            return [ScheduleConfig(name=TranslationSchedule.name), *[ScheduleConfig(name=ClassificationSchedule.name)]*self.n_modality]
+            return [
+                ScheduleConfig(name=TranslationSchedule.name),
+                *[ScheduleConfig(name=ClassificationSchedule.name)] * self.n_modality,
+            ]
         else:
             return super().get_train_schedules(task)
 
     def get_finetune_schedules(self, task):
         if task == TaskNames.supervised_group_identification:
-            return [ScheduleConfig(name=TranslationSchedule.name), *[ScheduleConfig(name=ClassificationSchedule.name)]*self.n_modality]
+            return [
+                ScheduleConfig(name=TranslationSchedule.name),
+                *[ScheduleConfig(name=ClassificationSchedule.name)] * self.n_modality,
+            ]
         else:
             return super().get_finetune_schedules(task)
 
     def get_transfer_schedules(self, task):
         if task == TaskNames.supervised_group_identification:
-            return [ScheduleConfig(name=TranslationSchedule.name), *[ScheduleConfig(name=ClassificationSchedule.name)]*self.n_modality]
+            return [
+                ScheduleConfig(name=TranslationSchedule.name),
+                *[ScheduleConfig(name=ClassificationSchedule.name)] * self.n_modality,
+            ]
         else:
             return super().get_transfer_schedules(task)
 
-
     def get_model_config(self):
-        config =  super().get_model_config()
-        
+        config = super().get_model_config()
+
         n_autoencoder_layer = len(self.autoencoder_hidden_sizes) + 1
 
         for i, encoder in enumerate(config.encoders):
-            config.encoders[i] = combine_mlpconfigs(encoder, MLPConfig(activations=[
-                    ActivationConfig(method=ReLUActivation.name)
-                    if n_layer + 1 != n_autoencoder_layer
-                    else None
-                    for n_layer in range(n_autoencoder_layer)
-                ]))
+            config.encoders[i] = combine_mlpconfigs(
+                encoder,
+                MLPConfig(
+                    activations=[
+                        ActivationConfig(method=ReLUActivation.name)
+                        if n_layer + 1 != n_autoencoder_layer
+                        else None
+                        for n_layer in range(n_autoencoder_layer)
+                    ]
+                ),
+            )
 
         return config
-            
+
 
 class TechniqueManager(ObjectManager):
     name = "techniques"

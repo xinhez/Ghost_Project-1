@@ -26,6 +26,7 @@ class UnitedNet:
     """\
     API Interface
     """
+
     verbose = False
     log_path = None
 
@@ -93,9 +94,10 @@ class UnitedNet:
 
         self._start_writer()
 
-
         Task().train(
-            self.technique.get_train_schedules(task_or_schedules) if isinstance(task_or_schedules, str) else task_or_schedules,
+            self.technique.get_train_schedules(task_or_schedules)
+            if isinstance(task_or_schedules, str)
+            else task_or_schedules,
             self.model,
             self.data,
             data_validate,
@@ -142,7 +144,9 @@ class UnitedNet:
         self._start_writer()
 
         Task().finetune(
-            self.technique.get_finetune_schedules(task_or_schedules) if isinstance(task_or_schedules, str) else task_or_schedules,
+            self.technique.get_finetune_schedules(task_or_schedules)
+            if isinstance(task_or_schedules, str)
+            else task_or_schedules,
             self.model,
             self.data,
             data_validate,
@@ -199,7 +203,9 @@ class UnitedNet:
         self._start_writer()
 
         Task().transfer(
-            self.technique.get_transfer_schedules(task_or_schedules) if isinstance(task_or_schedules, str) else task_or_schedules,
+            self.technique.get_transfer_schedules(task_or_schedules)
+            if isinstance(task_or_schedules, str)
+            else task_or_schedules,
             self.model,
             self.data,
             data_transfer,
@@ -238,7 +244,7 @@ class UnitedNet:
             label_index_evaluate,
             label_key_evaluate,
         )
-        
+
         self.set_model_device()
 
         return Task().evaluate(self.model, data_evaluation, self.logger)
@@ -267,7 +273,7 @@ class UnitedNet:
             modalities_provided=modalities_provided,
             modality_sizes=modality_sizes or self.data.modality_sizes,
         )
-        
+
         self.set_model_device()
 
         return Task().infer(

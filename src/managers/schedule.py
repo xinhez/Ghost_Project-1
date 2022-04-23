@@ -25,9 +25,7 @@ class BaseSchedule(AlternativelyNamedObject):
     loss_configs = None
     optimizer_modules = None
 
-    def __init__(
-        self, logger, model, learning_rate, config, model_path, method, order
-    ):
+    def __init__(self, logger, model, learning_rate, config, model_path, method, order):
         self.logger = logger
 
         loss_configs = self.loss_configs or config.losses
@@ -79,7 +77,9 @@ class BaseSchedule(AlternativelyNamedObject):
                 for term in losses:
                     tf.summary.scalar(
                         f"{self.model_path}/{term}",
-                        losses[term].detach().cpu().numpy() if torch.is_tensor(losses[term]) else losses[term],
+                        losses[term].detach().cpu().numpy()
+                        if torch.is_tensor(losses[term])
+                        else losses[term],
                         step=epoch,
                     )
 

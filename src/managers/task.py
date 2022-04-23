@@ -230,12 +230,7 @@ class Task:
         logger.log_method_start(self.train.__name__)
 
         self.update_schedules(
-            logger,
-            model,
-            learning_rate,
-            schedules,
-            model_path,
-            self.train.__name__,
+            logger, model, learning_rate, schedules, model_path, self.train.__name__,
         )
 
         self.train_with_schedules(
@@ -270,12 +265,7 @@ class Task:
         logger.log_method_start(self.finetune.__name__)
 
         self.update_schedules(
-            logger,
-            model,
-            learning_rate,
-            schedules,
-            model_path,
-            self.finetune.__name__,
+            logger, model, learning_rate, schedules, model_path, self.finetune.__name__,
         )
 
         self.train_with_schedules(
@@ -311,12 +301,7 @@ class Task:
         logger.log_method_start(self.transfer.__name__)
 
         self.update_schedules(
-            logger,
-            model,
-            learning_rate,
-            schedules,
-            model_path,
-            self.transfer.__name__,
+            logger, model, learning_rate, schedules, model_path, self.transfer.__name__,
         )
 
         dataloader = data.create_dataloader(

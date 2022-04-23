@@ -25,7 +25,6 @@ def create_module_list(constructor, configs):
     return nn.ModuleList([constructor(config) for config in configs])
 
 
-
 class Model(nn.Module):
     """
     Model
@@ -121,7 +120,7 @@ class Model(nn.Module):
     @property
     def n_output(self):
         return self.config.output_size
-        
+
     @property
     def n_sample(self):
         return self.batches.shape[0]

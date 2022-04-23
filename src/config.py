@@ -163,15 +163,33 @@ def combine_mlpconfigs(current_config, new_config):
         return current_config
     else:
         return MLPConfig(
-            input_size = utils.get_new_or_current(current_config.input_size, new_config.input_size) ,
-            output_size = utils.get_new_or_current(current_config.output_size, new_config.output_size),
-            hidden_sizes = utils.get_new_or_current(current_config.hidden_sizes, new_config.hidden_sizes),
-            is_binary_input = utils.get_new_or_current(current_config.is_binary_input, new_config.is_binary_input),
-            activations = utils.get_new_or_current(current_config.activations, new_config.activations),
-            dropouts = utils.get_new_or_current(current_config.dropouts, new_config.dropouts),
-            use_biases = utils.get_new_or_current(current_config.use_biases, new_config.use_biases),
-            use_batch_norms = utils.get_new_or_current(current_config.use_batch_norms, new_config.use_batch_norms),
-            use_layer_norms = utils.get_new_or_current(current_config.use_layer_norms, new_config.use_layer_norms),
+            input_size=utils.get_new_or_current(
+                current_config.input_size, new_config.input_size
+            ),
+            output_size=utils.get_new_or_current(
+                current_config.output_size, new_config.output_size
+            ),
+            hidden_sizes=utils.get_new_or_current(
+                current_config.hidden_sizes, new_config.hidden_sizes
+            ),
+            is_binary_input=utils.get_new_or_current(
+                current_config.is_binary_input, new_config.is_binary_input
+            ),
+            activations=utils.get_new_or_current(
+                current_config.activations, new_config.activations
+            ),
+            dropouts=utils.get_new_or_current(
+                current_config.dropouts, new_config.dropouts
+            ),
+            use_biases=utils.get_new_or_current(
+                current_config.use_biases, new_config.use_biases
+            ),
+            use_batch_norms=utils.get_new_or_current(
+                current_config.use_batch_norms, new_config.use_batch_norms
+            ),
+            use_layer_norms=utils.get_new_or_current(
+                current_config.use_layer_norms, new_config.use_layer_norms
+            ),
         )
 
 
@@ -182,8 +200,10 @@ def combine_fuserconfigs(current_config, new_config):
         return current_config
     else:
         return FuserConfig(
-            n_modality = utils.get_new_or_current(current_config.n_modality, new_config.n_modality),
-            method = utils.get_new_or_current(current_config.method, new_config.method),
+            n_modality=utils.get_new_or_current(
+                current_config.n_modality, new_config.n_modality
+            ),
+            method=utils.get_new_or_current(current_config.method, new_config.method),
         )
 
 
@@ -208,12 +228,28 @@ def combine_configs(current_config, new_config):
         return ModelConfig(
             input_sizes=current_config.input_sizes,
             output_size=current_config.output_size,
-            n_batch=utils.get_new_or_current(current_config.n_batch, new_config.n_batch),
+            n_batch=utils.get_new_or_current(
+                current_config.n_batch, new_config.n_batch
+            ),
             class_weights=current_config.class_weights,
-            encoders=combine_config_lists(combine_mlpconfigs, current_config.encoders, new_config.encoders),
-            decoders=combine_config_lists(combine_mlpconfigs, current_config.decoders, new_config.decoders),
-            discriminators=combine_config_lists(combine_mlpconfigs, current_config.discriminators, new_config.discriminators),
-            fusers=combine_config_lists(combine_fuserconfigs, current_config.fusers, new_config.fusers),
-            projectors=combine_config_lists(combine_mlpconfigs, current_config.projectors, new_config.projectors),
-            clusters=combine_config_lists(combine_mlpconfigs, current_config.clusters, new_config.clusters),
+            encoders=combine_config_lists(
+                combine_mlpconfigs, current_config.encoders, new_config.encoders
+            ),
+            decoders=combine_config_lists(
+                combine_mlpconfigs, current_config.decoders, new_config.decoders
+            ),
+            discriminators=combine_config_lists(
+                combine_mlpconfigs,
+                current_config.discriminators,
+                new_config.discriminators,
+            ),
+            fusers=combine_config_lists(
+                combine_fuserconfigs, current_config.fusers, new_config.fusers
+            ),
+            projectors=combine_config_lists(
+                combine_mlpconfigs, current_config.projectors, new_config.projectors
+            ),
+            clusters=combine_config_lists(
+                combine_mlpconfigs, current_config.clusters, new_config.clusters
+            ),
         )
