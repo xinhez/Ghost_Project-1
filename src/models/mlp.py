@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from src.config import ActivationConfig
+from src.configs.config import ActivationConfig
 from src.managers.activation import ActivationManager, SoftmaxActivation
 
 

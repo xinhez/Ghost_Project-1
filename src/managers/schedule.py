@@ -3,10 +3,9 @@ import os
 import tensorflow as tf
 import torch
 
-from src.config import LossConfig, ModuleNames
+from src.configs.config import LossConfig, ModuleNames
 from src.managers.base import AlternativelyNamedObject, ObjectManager
 from src.managers.loss import LossManager
-from src.managers.loss import ReconstructionMMDLoss
 from src.managers.loss import CrossEntropyLoss
 from src.managers.loss import SelfEntropyLoss, DDCLoss
 from src.managers.loss import (
@@ -159,34 +158,6 @@ class ClusteringSchedule(BaseSchedule):
     ]
 
 
-class ClusteringFinetuneSchedule(ClusteringSchedule):
-    name = "clustering(finetune)"
-    loss_configs = [
-        LossConfig(name=SelfEntropyLoss.name),
-        LossConfig(name=DDCLoss.name),
-        LossConfig(name=ReconstructionLoss.name),
-    ]
-    optimizer_modules = [
-        ModuleNames.fusers,
-        ModuleNames.projectors,
-        ModuleNames.clusters,
-    ]
-
-
-class ClusteringTransferSchedule(ClusteringSchedule):
-    name = "clustering(transfer)"
-    loss_configs = [
-        LossConfig(name=SelfEntropyLoss.name),
-        LossConfig(name=DDCLoss.name),
-        LossConfig(name=ReconstructionLoss.name),
-    ]
-    optimizer_modules = [
-        ModuleNames.fusers,
-        ModuleNames.projectors,
-        ModuleNames.clusters,
-    ]
-
-
 class TranslationSchedule(BaseSchedule):
     name = "translation"
     best_loss_term = TranslationLoss.name
@@ -221,20 +192,6 @@ class TranslationTransferSchedule(TranslationSchedule):
     ]
 
 
-class ReconstructionBatchAlignmentSchedule(BaseSchedule):
-    name = "reconstruction_batch_alignment"
-    best_loss_term = ReconstructionMMDLoss.name
-    loss_configs = [
-        LossConfig(name=ReconstructionMMDLoss.name),
-        LossConfig(name=ReconstructionLoss.name),
-        LossConfig(name=TranslationLoss.name),
-    ]
-    optimizer_modules = [
-        ModuleNames.encoders,
-        ModuleNames.decoders,
-    ]
-
-
 class ScheduleManager(ObjectManager):
     """\
     Schedule
@@ -249,10 +206,7 @@ class ScheduleManager(ObjectManager):
         ClassificationFinetuneSchedule,
         ClassificationTransferSchedule,
         ClusteringSchedule,
-        ClusteringFinetuneSchedule,
-        ClusteringTransferSchedule,
         TranslationSchedule,
         TranslationFinetuneSchedule,
         TranslationTransferSchedule,
-        ReconstructionBatchAlignmentSchedule,
     ]

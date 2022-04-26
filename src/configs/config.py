@@ -101,7 +101,6 @@ class LossConfig(Config):
     tau: none_or_type(float) = None
     sampling_ratio: none_or_type(float) = None
     sigmas: none_or_typelist(int) = None
-    ref_batch: none_or_type(int) = None
 
 
 # ==================== Schedule Config Definition ====================
@@ -145,7 +144,6 @@ class ModelConfig(Config):
     # ===== sizes =====
     input_sizes: List[int] = None
     output_size: none_or_type(int) = None
-    n_batch: int = None
     class_weights: none_or_typelist(float) = None
     # ===== architecture =====
     encoders: List[MLPConfig] = None
@@ -228,9 +226,6 @@ def combine_configs(current_config, new_config):
         return ModelConfig(
             input_sizes=current_config.input_sizes,
             output_size=current_config.output_size,
-            n_batch=utils.get_new_or_current(
-                current_config.n_batch, new_config.n_batch
-            ),
             class_weights=current_config.class_weights,
             encoders=combine_config_lists(
                 combine_mlpconfigs, current_config.encoders, new_config.encoders

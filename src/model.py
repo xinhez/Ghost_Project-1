@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from itertools import chain
 
-from src.config import combine_configs, ModuleNames
+from src.configs.config import combine_configs, ModuleNames
 from src.managers.technique import TechniqueManager
 from src.models.fuser import FuserManager
 from src.models.labelEncoder import LabelEncoder
@@ -13,8 +13,7 @@ from src.models.optimizer import Optimizer
 
 BEST_HEAD = "best_head"
 CONFIG = "config"
-DATA_LABEL_ENCODER = "data_label_encoder"
-DATA_BATCH_ENCODER = "data_batch_encoder"
+LABEL_ENCODER = "label_encoder"
 WEIGHTS = "weights"
 
 
@@ -40,8 +39,7 @@ class Model(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = None
-        self.data_label_encoder = LabelEncoder()
-        self.data_batch_encoder = LabelEncoder()
+        self.label_encoder = LabelEncoder()
         self.update_config(config)
 
     def update_config(self, config):
@@ -123,7 +121,7 @@ class Model(nn.Module):
 
     @property
     def n_sample(self):
-        return self.batches.shape[0]
+        return self.labels.shape[0]
 
     def set_device_in_use(self, device):
         self.device_in_use = device
@@ -131,7 +129,6 @@ class Model(nn.Module):
     def forward(
         self,
         modalities,
-        batches,
         labels,
         cluster_requested=True,
         discriminator_requested=False,
@@ -139,7 +136,6 @@ class Model(nn.Module):
         self.modalities = [
             modality.to(device=self.device_in_use) for modality in modalities
         ]
-        self.batches = batches.to(device=self.device_in_use)
         self.labels = (
             labels.to(device=self.device_in_use) if labels is not None else None
         )
@@ -210,8 +206,7 @@ class Model(nn.Module):
         state_dict = {
             WEIGHTS: self.state_dict(),
             CONFIG: self.config,
-            DATA_BATCH_ENCODER: self.data_batch_encoder.get_state(),
-            DATA_LABEL_ENCODER: self.data_label_encoder.get_state(),
+            LABEL_ENCODER: self.label_encoder.get_state(),
         }
         torch.save(state_dict, path)
 
@@ -227,6 +222,5 @@ def load_model_from_path(path):
     state_dict = torch.load(path)
     model = Model(state_dict[CONFIG])
     model.load_state_dict(state_dict[WEIGHTS])
-    model.data_batch_encoder.set_state(state_dict[DATA_BATCH_ENCODER])
-    model.data_label_encoder.set_state(state_dict[DATA_LABEL_ENCODER])
+    model.label_encoder.set_state(state_dict[LABEL_ENCODER])
     return model

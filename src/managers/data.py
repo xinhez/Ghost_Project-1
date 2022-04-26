@@ -15,22 +15,21 @@ from src.managers.technique import DefaultTechnique
 
 
 class Dataset(D.Dataset):
-    def __init__(self, modalities, batches, labels):
+    def __init__(self, modalities, labels):
         super().__init__()
         self.modalities = [
             torch.tensor(modality, dtype=torch.float) for modality in modalities
         ]
-        self.batches = torch.tensor(batches, dtype=torch.long)
         if labels is None:
-            labels = [-1 for _ in range(len(batches))]
+            labels = [-1 for _ in range(len(modalities[0]))]
         self.labels = torch.tensor(labels, dtype=torch.long)
 
     def __getitem__(self, index):
         modalities = [modality[index] for modality in self.modalities]
-        return modalities, self.batches[index], self.labels[index]
+        return modalities, self.labels[index]
 
     def __len__(self):
-        return len(self.batches)
+        return len(self.labels)
 
 
 class Data(NamedObject):
@@ -39,18 +38,12 @@ class Data(NamedObject):
     labels = None
     technique = DefaultTechnique.name
 
-    def __init__(self, modalities, batches_or_batch, *_):
-        self.validate_batches(batches_or_batch)
-        self.save_batches(batches_or_batch)
+    def __init__(self, modalities, *_):
         self.modalities = modalities
 
     @property
     def modality_sizes(self):
         return [modality.shape[1] for modality in self.modalities]
-
-    @property
-    def n_batch(self):
-        return utils.count_unique(self.batches)
 
     @property
     def n_modality(self):
@@ -60,24 +53,13 @@ class Data(NamedObject):
     def n_sample(self):
         return len(self.modalities[0])
 
-    def save_batches(self, batches_or_batch):
-        if isinstance(batches_or_batch, list):
-            self.batches = batches_or_batch
-        else:
-            self.batches = [batches_or_batch for _ in range(self.n_sample)]
-
-    def validate_batches(self, batch_or_batches):
-        if batch_or_batches is None:
-            raise Exception("Unknow reason caused None batches.")
-
     def create_dataset(self, model):
-        batches = model.data_batch_encoder.fit_transform(self.batches)
         labels = (
             None
             if self.labels is None
-            else model.data_label_encoder.fit_transform(self.labels)
+            else model.label_encoder.fit_transform(self.labels)
         )
-        return Dataset(self.modalities, batches, labels)
+        return Dataset(self.modalities, labels)
 
     @staticmethod
     def create_dataloader_from_dataset(dataset, shuffle, batch_size, random_seed):
@@ -145,7 +127,6 @@ class InferenceData(Data):
     def __init__(
         self,
         modalities,
-        batches_or_batch,
         labels_or_None,
         modalities_provided,
         modality_sizes,
@@ -160,7 +141,6 @@ class InferenceData(Data):
 
         super().__init__(
             modalities,
-            batches_or_batch,
             labels_or_None,
             modalities_provided,
             modality_sizes,
@@ -174,8 +154,8 @@ class TransferenceData(Data):
 class LabeledData(Data):
     name = "labeled"
 
-    def __init__(self, modalities, batches_or_batch, labels, *args):
-        super().__init__(modalities, batches_or_batch, labels, *args)
+    def __init__(self, modalities, labels, *args):
+        super().__init__(modalities, labels, *args)
         if labels is None:
             raise Exception("Please provide valid labels.")
         self.labels = labels
@@ -184,8 +164,8 @@ class LabeledData(Data):
 class TrainingData(LabeledData):
     name = "training"
 
-    def __init__(self, modalities, batches_or_batch, labels, *args):
-        super().__init__(modalities, batches_or_batch, labels, *args)
+    def __init__(self, modalities, labels, *args):
+        super().__init__(modalities, labels, *args)
         self.process_modalities(modalities)
         self.class_weights = list(
             class_weight.compute_class_weight(
@@ -233,18 +213,11 @@ class DataManager(ObjectManager):
         ValidationData,
     ]
 
-    label = "label"
-    batch = "batch"
-    keys = [label, batch]
-
     @staticmethod
-    def anndata_from_outputs(model, dataset, outputs):
+    def anndata_from_outputs(model, outputs):
         _, predictions, fused_latents = outputs
         adata = ad.AnnData(fused_latents.cpu().numpy())
-        adata.obs["batch"] = model.data_batch_encoder.inverse_transform(
-            dataset.batches.tolist()
-        )
-        adata.obs["predicted_label"] = model.data_label_encoder.inverse_transform(
+        adata.obs["predicted_label"] = model.label_encoder.inverse_transform(
             predictions.cpu().tolist()
         )
 
@@ -257,21 +230,14 @@ class DataManager(ObjectManager):
     def format_anndatas(
         data_purpose,
         adatas,
-        batch_index,
-        batch_key,
         label_index=None,
         label_key=None,
         modalities_provided=[],
         modality_sizes=[],
     ):
-        DataManager.validate_anndatas(
-            data_purpose, adatas, batch_index, batch_key, label_index, label_key
-        )
+        DataManager.validate_anndatas(data_purpose, adatas, label_index, label_key)
 
         modalities = DataManager.get_Xs_from_anndatas(adatas)
-        batches_or_batch = DataManager.get_obs_from_anndatas(
-            adatas, batch_index, batch_key, data_purpose
-        )
         labels_or_None = DataManager.get_obs_from_anndatas(
             adatas, label_index, label_key
         )
@@ -280,20 +246,16 @@ class DataManager(ObjectManager):
 
         return constructor(
             modalities,
-            batches_or_batch,
             labels_or_None,
             modalities_provided,
             modality_sizes,
         )
 
     @staticmethod
-    def validate_anndatas(
-        data_purpose, adatas, batch_index, batch_key, label_index, label_key
-    ):
+    def validate_anndatas(data_purpose, adatas, label_index, label_key):
         DataManager.validate_anndatas_exist(data_purpose, adatas)
         DataManager.validate_anndatas_sample_sizes(adatas)
         DataManager.validate_anndatas_dimensions(adatas)
-        DataManager.validate_index_and_key(adatas, batch_index, batch_key)
         DataManager.validate_index_and_key(adatas, label_index, label_key)
 
     @staticmethod

@@ -53,22 +53,21 @@ class Task:
         all_outputs = []
         all_losses = {}
 
-        for modalities, batches, labels in dataloader:
+        for modalities, labels in dataloader:
             if schedule is not None:
                 outputs = model(
                     modalities,
-                    batches,
                     labels,
                     schedule.cluster_requested,
                     schedule.discriminator_requested,
                 )
                 losses = schedule.step(model, train_model)
                 losses = utils.amplify_value_dictionary_by_sample_size(
-                    losses, len(batches)
+                    losses, len(labels)
                 )
                 all_losses = utils.sum_value_dictionaries(all_losses, losses)
             else:
-                outputs = model(modalities, batches, labels)
+                outputs = model(modalities, labels)
 
             if infer_model:
                 utils.inplace_combine_tensor_lists(all_outputs, outputs)
@@ -230,7 +229,12 @@ class Task:
         logger.log_method_start(self.train.__name__)
 
         self.update_schedules(
-            logger, model, learning_rate, schedules, model_path, self.train.__name__,
+            logger,
+            model,
+            learning_rate,
+            schedules,
+            model_path,
+            self.train.__name__,
         )
 
         self.train_with_schedules(
@@ -265,7 +269,12 @@ class Task:
         logger.log_method_start(self.finetune.__name__)
 
         self.update_schedules(
-            logger, model, learning_rate, schedules, model_path, self.finetune.__name__,
+            logger,
+            model,
+            learning_rate,
+            schedules,
+            model_path,
+            self.finetune.__name__,
         )
 
         self.train_with_schedules(
@@ -301,7 +310,12 @@ class Task:
         logger.log_method_start(self.transfer.__name__)
 
         self.update_schedules(
-            logger, model, learning_rate, schedules, model_path, self.transfer.__name__,
+            logger,
+            model,
+            learning_rate,
+            schedules,
+            model_path,
+            self.transfer.__name__,
         )
 
         dataloader = data.create_dataloader(
@@ -311,7 +325,10 @@ class Task:
             data_transfer, model, shuffle=True, batch_size=batch_size
         )
         datalodaer_validate = data_validate.create_dataloader(
-            model, shuffle=True, batch_size=batch_size, random_seed=random_seed,
+            model,
+            shuffle=True,
+            batch_size=batch_size,
+            random_seed=random_seed,
         )
 
         for epoch in range(n_epoch):

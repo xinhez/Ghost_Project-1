@@ -24,44 +24,6 @@ class BaseLoss(NamedObject):
             return F.mse_loss(output, target)
 
 
-class ReconstructionMMDLoss(BaseLoss):
-    name = "reconstruction_mmd"
-    """\
-    Adapted from https://github.com/KrishnaswamyLab/SAUCIE/blob/master/model.py
-    """
-
-    def __call__(self, model):
-        loss = 0
-        batches = model.batches
-
-        for modality_index, (translations, modality) in enumerate(
-            zip(model.translations, model.modalities)
-        ):
-            reconstruction = translations[modality_index]
-
-            for batch in torch.unique(batches):
-                indices = torch.where(batches == batch)[0]
-                sample_count = indices.shape[0]
-
-                if sample_count > 1:
-                    rc = reconstruction[indices]
-                    gt = modality[indices]
-
-                    rc_mean = torch.mean(rc, dim=0, keepdim=True)
-                    rc_std = torch.std(rc, dim=0, keepdim=True)
-                    rc_normalized = (rc - rc_mean) / (rc_std + self.eps)
-
-                    gt_mean = torch.mean(gt, dim=0, keepdim=True)
-                    gt_std = torch.std(gt, dim=0, keepdim=True)
-                    gt_normalized = (gt - gt_mean) / (gt_std + self.eps)
-
-                    loss += F.mse_loss(rc_normalized, gt_normalized)
-
-        loss /= model.n_modality
-        loss *= self.weight
-        return loss, None
-
-
 class SelfEntropyLoss(BaseLoss):
     name = "self_entropy"
     """
@@ -407,8 +369,6 @@ class TranslationLoss(BaseLoss):
 class LossManager(ObjectManager):
     name = "losses"
     constructors = [
-        # Batch Alignment Losses
-        ReconstructionMMDLoss,
         # Classification Losses
         CrossEntropyLoss,
         # Clustering Losses
