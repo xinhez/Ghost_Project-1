@@ -24,6 +24,117 @@ class BaseLoss(NamedObject):
             return F.mse_loss(output, target)
 
 
+class LatentMMDLoss(BaseLoss):
+    name = "latent_mmd"
+    """\
+    Adapted from https://github.com/KrishnaswamyLab/SAUCIE/blob/master/model.py
+    """
+
+    def __init__(self, config, model):
+        super().__init__(config, model)
+        self.sigmas = torch.tensor(
+            config.sigmas or [10, 15, 20, 50], device=model.device_in_use
+        )
+        self.ref_batch = config.ref_batch or 0
+        self.weight = config.weight or 1000
+
+    @staticmethod
+    def _pairwise_dists(x1, x2):
+        """Helper function to calculate pairwise distances between tensors x1 and x2."""
+        r1 = torch.sum(x1 * x1, dim=1, keepdim=True)
+        r2 = torch.sum(x2 * x2, dim=1, keepdim=True)
+        D = r1 - 2 * torch.matmul(x1, x2.t()) + r2.t()
+        return D
+
+    def _gaussian_kernel_matrix(self, dist):
+        """Multi-scale RBF kernel."""
+        beta = 1.0 / (2.0 * (torch.unsqueeze(self.sigmas, 1)))
+
+        s = torch.matmul(beta, torch.reshape(dist, (1, -1)))
+
+        return torch.reshape(torch.sum(torch.exp(-s), dim=0), dist.shape) / len(
+            self.sigmas
+        )
+
+    def __call__(self, model):
+        loss = 0
+        batches = model.batches
+
+        # reference batch
+        ref_indices = torch.where(batches == self.ref_batch)[0]
+        n_ref = ref_indices.shape[0]
+
+        if n_ref > 0:
+            for latent in model.latents:
+                e = latent / (torch.mean(latent) + self.eps)
+                K = LatentMMDLoss._pairwise_dists(e, e)
+                K = K / torch.max(K)
+                K = self._gaussian_kernel_matrix(K)
+
+                ref_var = torch.sum(K[ref_indices].t()[ref_indices]) / (n_ref ** 2)
+
+                # nonreference batches
+                for nonref_batch in batches.unique():
+                    if nonref_batch != self.ref_batch:
+                        nonref_indices = torch.where(batches == nonref_batch)[0]
+                        n_nonref = nonref_indices.shape[0]
+
+                        if n_nonref > 0:
+                            nonref_var = torch.sum(
+                                K[nonref_indices].t()[nonref_indices]
+                            ) / (n_nonref ** 2)
+                            covar = (
+                                torch.sum(K[ref_indices].t()[nonref_indices])
+                                / n_ref
+                                / n_nonref
+                            )
+
+                            loss += torch.abs(ref_var + nonref_var - 2 * covar)
+
+            loss /= model.n_modality
+            loss *= self.weight
+        return loss, None
+
+
+class ReconstructionMMDLoss(BaseLoss):
+    name = "reconstruction_mmd"
+    """\
+    Adapted from https://github.com/KrishnaswamyLab/SAUCIE/blob/master/model.py
+    """
+
+    def __call__(self, model):
+
+        loss = 0
+        batches = model.batches
+
+        for modality_index, (translations, modality) in enumerate(
+            zip(model.translations, model.modalities)
+        ):
+            reconstruction = translations[modality_index]
+
+            for batch in torch.unique(batches):
+                indices = torch.where(batches == batch)[0]
+                sample_count = indices.shape[0]
+
+                if sample_count > 1:
+                    rc = reconstruction[indices]
+                    gt = modality[indices]
+
+                    rc_mean = torch.mean(rc, dim=0, keepdim=True)
+                    rc_std = torch.std(rc, dim=0, keepdim=True)
+                    rc_normalized = (rc - rc_mean) / (rc_std + self.eps)
+
+                    gt_mean = torch.mean(gt, dim=0, keepdim=True)
+                    gt_std = torch.std(gt, dim=0, keepdim=True)
+                    gt_normalized = (gt - gt_mean) / (gt_std + self.eps)
+
+                    loss += F.mse_loss(rc_normalized, gt_normalized)
+
+        loss /= model.n_modality
+        loss *= self.weight
+        return loss, None
+
+
 class SelfEntropyLoss(BaseLoss):
     name = "self_entropy"
     """
@@ -89,7 +200,7 @@ class DDCLoss(BaseLoss):
         )
 
         nom = DDCLoss._atleast_epsilon(nom)
-        dnom_squared = DDCLoss._atleast_epsilon(dnom_squared, eps=BaseLoss.eps ** 2)
+        dnom_squared = DDCLoss._atleast_epsilon(dnom_squared, eps=1e-18)
 
         d = (
             2
@@ -99,7 +210,7 @@ class DDCLoss(BaseLoss):
         return d
 
     @staticmethod
-    def kernel_from_distance_matrix(dist, rel_sigma, min_sigma=BaseLoss.eps):
+    def kernel_from_distance_matrix(dist, rel_sigma, min_sigma=1e-9):
         """\
         Compute a Gaussian kernel matrix from a distance matrix.
         """
@@ -113,7 +224,7 @@ class DDCLoss(BaseLoss):
         return k
 
     @staticmethod
-    def kernel_from_distance_matrix(dist, rel_sigma, min_sigma=BaseLoss.eps):
+    def kernel_from_distance_matrix(dist, rel_sigma, min_sigma=1e-9):
         """\
         Compute a Gaussian kernel matrix from a distance matrix.
         """
@@ -240,7 +351,7 @@ class ContrastiveLoss(BaseLoss):
     def __call__(self, model):
         if model.n_modality == 1:
             return 0, [0] * model.n_head
-
+            
         total_loss = 0
         head_losses = []
 
@@ -369,6 +480,9 @@ class TranslationLoss(BaseLoss):
 class LossManager(ObjectManager):
     name = "losses"
     constructors = [
+        # Batch Alignment Losses
+        LatentMMDLoss,
+        ReconstructionMMDLoss,
         # Classification Losses
         CrossEntropyLoss,
         # Clustering Losses

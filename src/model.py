@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from itertools import chain
 
-from src.configs.config import combine_configs, ModuleNames
+from src.config import combine_configs
 from src.managers.technique import TechniqueManager
 from src.models.fuser import FuserManager
 from src.models.labelEncoder import LabelEncoder
@@ -13,7 +13,8 @@ from src.models.optimizer import Optimizer
 
 BEST_HEAD = "best_head"
 CONFIG = "config"
-LABEL_ENCODER = "label_encoder"
+DATA_LABEL_ENCODER = "data_label_encoder"
+DATA_BATCH_ENCODER = "data_batch_encoder"
 WEIGHTS = "weights"
 
 
@@ -22,6 +23,15 @@ def create_module_list(constructor, configs):
     Create a list of modules using the given constructor of the given configs.
     """
     return nn.ModuleList([constructor(config) for config in configs])
+
+
+class ModuleNames:
+    encoders = "encoders"
+    decoders = "decoders"
+    discriminators = "discriminators"
+    fusers = "fusers"
+    projectors = "projectors"
+    clusters = "clusters"
 
 
 class Model(nn.Module):
@@ -39,7 +49,8 @@ class Model(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = None
-        self.label_encoder = LabelEncoder()
+        self.data_label_encoder = LabelEncoder()
+        self.data_batch_encoder = LabelEncoder()
         self.update_config(config)
 
     def update_config(self, config):
@@ -120,8 +131,12 @@ class Model(nn.Module):
         return self.config.output_size
 
     @property
+    def n_batch(self):
+        return self.config.n_batch
+
+    @property
     def n_sample(self):
-        return self.labels.shape[0]
+        return self.batches.shape[0]
 
     def set_device_in_use(self, device):
         self.device_in_use = device
@@ -129,6 +144,7 @@ class Model(nn.Module):
     def forward(
         self,
         modalities,
+        batches,
         labels,
         cluster_requested=True,
         discriminator_requested=False,
@@ -136,18 +152,34 @@ class Model(nn.Module):
         self.modalities = [
             modality.to(device=self.device_in_use) for modality in modalities
         ]
+        self.batches = batches.to(device=self.device_in_use)
         self.labels = (
             labels.to(device=self.device_in_use) if labels is not None else None
         )
 
-        self.latents = [
-            encoder(modality)
-            for (encoder, modality) in zip(self.encoders, self.modalities)
-        ]
+        if self.n_batch > 0:
+            batch_codes = F.one_hot(batches, self.n_batch).to(self.device_in_use)
 
-        self.translations = [
-            [decoder(latent) for latent in self.latents] for decoder in self.decoders
-        ]
+            self.latents = [
+                encoder(torch.cat([modality, batch_codes], dim=1))
+                for (encoder, modality) in zip(self.encoders, self.modalities)
+            ]
+
+
+            self.translations = [
+                [decoder(torch.cat([latent, batch_codes], dim=1)) for latent in self.latents] for decoder in self.decoders
+            ]
+        else:
+            self.latents = [
+                encoder(modality)
+                for (encoder, modality) in zip(self.encoders, self.modalities)
+            ]
+
+
+            self.translations = [
+                [decoder(latent) for latent in self.latents] for decoder in self.decoders
+            ]
+
 
         if discriminator_requested:
             self.discriminator_real_outputs = [
@@ -206,7 +238,8 @@ class Model(nn.Module):
         state_dict = {
             WEIGHTS: self.state_dict(),
             CONFIG: self.config,
-            LABEL_ENCODER: self.label_encoder.get_state(),
+            DATA_BATCH_ENCODER: self.data_batch_encoder.get_state(),
+            DATA_LABEL_ENCODER: self.data_label_encoder.get_state(),
         }
         torch.save(state_dict, path)
 
@@ -222,5 +255,6 @@ def load_model_from_path(path):
     state_dict = torch.load(path)
     model = Model(state_dict[CONFIG])
     model.load_state_dict(state_dict[WEIGHTS])
-    model.label_encoder.set_state(state_dict[LABEL_ENCODER])
+    model.data_batch_encoder.set_state(state_dict[DATA_BATCH_ENCODER])
+    model.data_label_encoder.set_state(state_dict[DATA_LABEL_ENCODER])
     return model

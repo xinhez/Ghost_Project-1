@@ -52,6 +52,6 @@ class Logger:
         message = f"{self.tab}========== Schedule {schedule.order}: {schedule.name} =========="
         self.log_message(message)
 
-    def log_method_start(self, method):
-        message = f"\n{method.upper()}"
+    def log_method_start(self, method, task=None):
+        message = f"\n{method.upper()} {''if task is None else 'Task:'} {'' if task is None else task}"
         self.log_message(message)

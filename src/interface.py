@@ -1,13 +1,12 @@
 import anndata
 import numpy
-import os
 import random
 import torch
 import tensorflow as tf
 
 from typing import List, Union
 
-from src.configs.config import ModelConfig, ScheduleConfig, TechniqueConfig
+from src.config import ModelConfig, TaskConfig, TechniqueConfig
 from src.logger import Logger
 from src.model import load_model_from_path, Model
 from src.managers.data import Data, DataManager
@@ -18,7 +17,7 @@ from src.managers.data import (
     TransferenceData,
     ValidationData,
 )
-from src.managers.task import Task
+from src.managers.task import BaseTask, TaskManager
 from src.managers.technique import DefaultTechnique, TechniqueManager
 from src.utils import set_random_seed
 
@@ -27,20 +26,18 @@ class UnitedNet:
     """\
     API Interface
     """
-
     verbose = False
     log_path = None
 
-    def __init__(self, device="cpu", verbose=True, random_seed=3407, save_path="saved"):
-        if save_path is not None:
-            os.makedirs(save_path, exist_ok=True)
-            log_path = f"{save_path}/log"
-            model_path = f"{save_path}/models"
-            tensorboard_path = f"{save_path}/tensorboards"
-        else:
-            log_path = None
-            model_path = None
-            tensorboard_path = None
+    def __init__(
+        self,
+        device="cpu",
+        log_path="saved_log",
+        model_path="saved_models",
+        tensorboard_path="saved_tensorboards",
+        verbose=True,
+        random_seed=3407,
+    ):
         self.set_random_seed(random_seed)
         self.set_device(device)
         self.set_logger(verbose, log_path)
@@ -52,6 +49,8 @@ class UnitedNet:
         adatas: List[anndata.AnnData],
         label_index: int,
         label_key: str,
+        batch_index: int = None,
+        batch_key: str = None,
         technique: str = DefaultTechnique.name,
     ) -> None:
         """\
@@ -59,10 +58,7 @@ class UnitedNet:
         If overriding existing training dataset, the model will also be refreshed.
         """
         self.data = DataManager.format_anndatas(
-            TrainingData.name,
-            adatas,
-            label_index,
-            label_key,
+            TrainingData.name, adatas, batch_index, batch_key, label_index, label_key,
         )
         self.technique = TechniqueManager.get_constructor_by_name(technique)(self.data)
         self.model = Model(self.technique.get_model_config())
@@ -70,10 +66,12 @@ class UnitedNet:
 
     def train(
         self,
-        task_or_schedules: Union[str, List[ScheduleConfig]],
+        task: Union[str, TaskConfig],
         adatas_validate: List[anndata.AnnData] = None,
         label_index_validate: int = None,
         label_key_validate: str = None,
+        batch_index_validate: int = None,
+        batch_key_validate: str = None,
         n_epoch: int = 1,
         learning_rate: float = 0.001,
         batch_size: int = 512,
@@ -87,16 +85,14 @@ class UnitedNet:
             adatas_validate,
             label_index_validate,
             label_key_validate,
+            batch_index_validate,
+            batch_key_validate,
         )
-
-        self.set_model_device()
 
         self._start_writer()
 
-        Task().train(
-            self.technique.get_train_schedules(task_or_schedules)
-            if isinstance(task_or_schedules, str)
-            else task_or_schedules,
+        TaskManager.get_task_by_name_or_config(task).train(
+            task,
             self.model,
             self.data,
             data_validate,
@@ -115,10 +111,12 @@ class UnitedNet:
 
     def finetune(
         self,
-        task_or_schedules: Union[str, List[ScheduleConfig]],
+        task: Union[str, TaskConfig],
         adatas_validate: List[anndata.AnnData] = None,
         label_index_validate: int = None,
         label_key_validate: str = None,
+        batch_index_validate: int = None,
+        batch_key_validate: str = None,
         n_epoch: int = 1,
         learning_rate: float = 0.001,
         batch_size: int = 512,
@@ -132,16 +130,14 @@ class UnitedNet:
             adatas_validate,
             label_index_validate,
             label_key_validate,
+            batch_index_validate,
+            batch_key_validate,
         )
-
-        self.set_model_device()
 
         self._start_writer()
 
-        Task().finetune(
-            self.technique.get_finetune_schedules(task_or_schedules)
-            if isinstance(task_or_schedules, str)
-            else task_or_schedules,
+        TaskManager.get_task_by_name_or_config(task).finetune(
+            task,
             self.model,
             self.data,
             data_validate,
@@ -160,11 +156,15 @@ class UnitedNet:
 
     def transfer(
         self,
-        task_or_schedules: Union[str, List[ScheduleConfig]],
+        task: Union[str, TaskConfig],
         adatas_transfer: List[anndata.AnnData],
+        batch_index_transfer: int = None,
+        batch_key_transfer: str = None,
         adatas_validate: List[anndata.AnnData] = None,
         label_index_validate: int = None,
         label_key_validate: str = None,
+        batch_index_validate: int = None,
+        batch_key_validate: str = None,
         n_epoch: int = 1,
         learning_rate: float = 0.001,
         batch_size: int = 512,
@@ -178,21 +178,21 @@ class UnitedNet:
             adatas_validate,
             label_index_validate,
             label_key_validate,
+            batch_index_validate,
+            batch_key_validate,
         )
 
         data_transfer = DataManager.format_anndatas(
             TransferenceData.name,
             adatas_transfer,
+            batch_index_transfer,
+            batch_key_transfer,
         )
-
-        self.set_model_device()
 
         self._start_writer()
 
-        Task().transfer(
-            self.technique.get_transfer_schedules(task_or_schedules)
-            if isinstance(task_or_schedules, str)
-            else task_or_schedules,
+        TaskManager.get_task_by_name_or_config(task).transfer(
+            task,
             self.model,
             self.data,
             data_transfer,
@@ -215,6 +215,8 @@ class UnitedNet:
         adatas_evaluate: List[anndata.AnnData] = None,
         label_index_evaluate: int = None,
         label_key_evaluate: str = None,
+        batch_index_evaluate: int = None,
+        batch_key_evaluate: str = None,
     ):
         """\
         Evaluate the current model with the adatas_eval dataset, or the registered data if the former not provided.
@@ -224,18 +226,20 @@ class UnitedNet:
         data_evaluation = self._format_data_or_retrieve_registered(
             EvaluationData.name,
             adatas_evaluate,
+            batch_index_evaluate,
+            batch_key_evaluate,
             label_index_evaluate,
             label_key_evaluate,
         )
 
-        self.set_model_device()
-
-        return Task().evaluate(self.model, data_evaluation, self.logger)
+        return BaseTask().evaluate(self.model, data_evaluation, self.logger)
 
     def infer(
         self,
         adatas_infer: List[anndata.AnnData] = None,
         modalities_provided: List = [],
+        batch_index_infer: int = None,
+        batch_key_infer: str = None,
         modality_sizes: List[int] = None,
     ) -> Union[List[List[anndata.AnnData]], anndata.AnnData]:
         """\
@@ -249,13 +253,13 @@ class UnitedNet:
         data_inference = self._format_data_or_retrieve_registered(
             InferenceData.name,
             adatas_infer,
+            batch_index_infer,
+            batch_key_infer,
             modalities_provided=modalities_provided,
             modality_sizes=modality_sizes or self.data.modality_sizes,
         )
 
-        self.set_model_device()
-
-        return Task().infer(
+        return BaseTask().infer(
             self.model, data_inference, self.logger, modalities_provided
         )
 
@@ -344,6 +348,8 @@ class UnitedNet:
         self,
         group,
         adatas,
+        batch_index,
+        batch_key,
         label_index=None,
         label_key=None,
         modalities_provided=[],
@@ -355,6 +361,8 @@ class UnitedNet:
             return DataManager.format_anndatas(
                 group,
                 adatas,
+                batch_index,
+                batch_key,
                 label_index,
                 label_key,
                 modalities_provided,
@@ -378,12 +386,16 @@ class UnitedNet:
         adatas_validate,
         label_index_validate,
         label_key_validate,
+        batch_index_validate,
+        batch_key_validate,
     ):
         self._check_model_exist()
         self._check_data_exist()
         return self._format_data_or_retrieve_registered(
             ValidationData.name,
             adatas_validate,
+            batch_index_validate,
+            batch_key_validate,
             label_index_validate,
             label_key_validate,
         )
